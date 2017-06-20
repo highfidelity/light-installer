@@ -187,7 +187,7 @@
             ${EndIf}
             
         ${Else}
-            MessageBox MB_OK "${displayName} is not running."
+            ;MessageBox MB_OK "${displayName} is not running."
         ${EndIf}
 
       !undef UniqueID
@@ -237,7 +237,6 @@
 ;--------------------------------
 !insertmacro MUI_PAGE_WELCOME
 Page custom MakeSureHiFiInstalled
-!insertmacro MUI_PAGE_INSTFILES
 ;--------------------------------
 ; END Installer Sections
 ;--------------------------------
@@ -256,10 +255,10 @@ Page custom MakeSureHiFiInstalled
 ; START Step 1:
 ; If needed, install High Fidelity Interface
 ;--------------------------------
-    LangString PAGE_TITLE ${LANG_ENGLISH} "Title"
-    LangString PAGE_SUBTITLE ${LANG_ENGLISH} "Subtitle"
+    LangString PAGE1_TITLE ${LANG_ENGLISH} "Step 1"
+    LangString PAGE1_SUBTITLE ${LANG_ENGLISH} "If needed, install Interface"
     Function MakeSureHiFiInstalled
-        !insertmacro MUI_HEADER_TEXT $(PAGE_TITLE) $(PAGE_SUBTITLE)
+        !insertmacro MUI_HEADER_TEXT $(PAGE1_TITLE) $(PAGE1_SUBTITLE)
         ; Try getting the location of Interface.exe by checking
         ;     the path associated with 'hifi://' URLs
         ReadRegStr $0 HKCR "hifi\DefaultIcon" ""
@@ -269,33 +268,31 @@ Page custom MakeSureHiFiInstalled
             IfFileExists $0 interface_found interface_not_found
             
             interface_found: ; We might not need to (download and install) High Fidelity Interface
-                MessageBox MB_OK "High Fidelity .exe was found at: $0"
+                ;MessageBox MB_OK "High Fidelity .exe was found at: $0"
                 ; 1: Make sure that no High Fidelity application is already running
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
-                ;     Get the result, then kill Interface.exe if it's still running.
                 ExecWait '"$0" --version $TEMP\version.txt'
                 FileOpen $4 "$TEMP\version.txt" r
                 FileRead $4 $1 ; Read the Interface version from the file into $1
                 FileClose $4
-                ${nsProcess::KillProcess} "interface.exe" $R0
                 ${If} $1 == "PR10758"
-                    MessageBox MB_OK "$0 Interface Version $1 is correct!"
+                    ;MessageBox MB_OK "$0 Interface Version $1 is correct!"
                 ${Else}
                     ${StrContains} $3 "steamapps" $0 ; Double-check Interface.exe isn't a Steam version by checking the EXE path
                     StrCmp $3 "" not_installed_from_steam
                         Goto installed_from_steam
                         not_installed_from_steam:
-                            MessageBox MB_OK "$0 Installation Portal is NOT STEAM. Interface Version $1 is incorrect."
+                            ;MessageBox MB_OK "$0 Installation Portal is NOT STEAM. Interface Version $1 is incorrect."
                                 Goto interface_not_found
                     installed_from_steam:
-                        MessageBox MB_OK "$0 Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
+                        ;MessageBox MB_OK "$0 Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
                 ${EndIf}
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
                 MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed." IDOK continue_download IDABORT abort_download
                 abort_download:
-                    MessageBox MB_OK "Aborting download."
+                    ;MessageBox MB_OK "Aborting download."
                     Goto finish
                 continue_download:
                     StrCpy $4 "$TEMP\hifi_installer.exe"
@@ -308,7 +305,47 @@ Page custom MakeSureHiFiInstalled
         ${EndIf}
         finish: 
             ${nsProcess::Unload}
+            Call EventSpecificContent
     FunctionEnd
 ;--------------------------------
 ; END Step 1
+;--------------------------------
+  
+;--------------------------------
+; START Step 2:
+; If needed, add custom, pre-defined content to user's filesystem
+;--------------------------------
+    LangString PAGE2_TITLE ${LANG_ENGLISH} "Step 2"
+    LangString PAGE2_SUBTITLE ${LANG_ENGLISH} "If needed, add custom content"
+    Function EventSpecificContent
+        !insertmacro MUI_HEADER_TEXT $(PAGE2_TITLE) $(PAGE2_SUBTITLE)
+        StrCpy $0 "CONTENT_ID_GOES_HERE"
+        IfFileExists "$AppData\Local\High Fidelity\$0\*.*" content_found content_not_found
+        content_found:
+            MessageBox MB_OK "Custom content found!"
+            Goto EventSpecificContent_finish
+        content_not_found:
+            MessageBox MB_OK "Custom content NOT found!"
+            Goto EventSpecificContent_finish
+        EventSpecificContent_finish:
+            Call LaunchInterface
+    FunctionEnd
+;--------------------------------
+; END Step 2
+;--------------------------------
+  
+;--------------------------------
+; START Step 3:
+; Launch Interface with command-line arguments
+;--------------------------------
+    LangString PAGE3_TITLE ${LANG_ENGLISH} "Step 3"
+    LangString PAGE3_SUBTITLE ${LANG_ENGLISH} "Launch Interface with command-line arguments"
+    Function LaunchInterface
+        !insertmacro MUI_HEADER_TEXT $(PAGE3_TITLE) $(PAGE3_SUBTITLE)
+        ReadRegStr $0 HKCR "hifi\DefaultIcon" ""
+        ${StrRep} '$0' '$0' ',1' ''
+        Exec '"$0" --url hifi://zaru'
+    FunctionEnd
+;--------------------------------
+; END Step 3
 ;--------------------------------
