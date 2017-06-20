@@ -236,7 +236,7 @@
 ; START Installer Pages
 ;--------------------------------
 !insertmacro MUI_PAGE_WELCOME
-Page custom MakeSureHiFiInstalled
+!insertmacro MUI_PAGE_INSTFILES
 ;--------------------------------
 ; END Installer Sections
 ;--------------------------------
@@ -244,8 +244,12 @@ Page custom MakeSureHiFiInstalled
 ;--------------------------------
 ; START Installer Sections
 ;--------------------------------    
-    Section "HiFi Light Installer" HiFiLightInstaller
+    Section "Interface" Interface
+        Call MakeSureHiFiInstalled
+    SectionEnd
     
+    Section "Custom Content" CustomContent
+            Call EventSpecificContent
     SectionEnd
 ;--------------------------------
 ; END Installer Sections
@@ -255,10 +259,7 @@ Page custom MakeSureHiFiInstalled
 ; START Step 1:
 ; If needed, install High Fidelity Interface
 ;--------------------------------
-    LangString PAGE1_TITLE ${LANG_ENGLISH} "Step 1"
-    LangString PAGE1_SUBTITLE ${LANG_ENGLISH} "If needed, install Interface"
     Function MakeSureHiFiInstalled
-        !insertmacro MUI_HEADER_TEXT $(PAGE1_TITLE) $(PAGE1_SUBTITLE)
         ; Try getting the location of Interface.exe by checking
         ;     the path associated with 'hifi://' URLs
         ReadRegStr $0 HKCR "hifi\DefaultIcon" ""
@@ -305,7 +306,6 @@ Page custom MakeSureHiFiInstalled
         ${EndIf}
         finish: 
             ${nsProcess::Unload}
-            Call EventSpecificContent
     FunctionEnd
 ;--------------------------------
 ; END Step 1
@@ -315,17 +315,14 @@ Page custom MakeSureHiFiInstalled
 ; START Step 2:
 ; If needed, add custom, pre-defined content to user's filesystem
 ;--------------------------------
-    LangString PAGE2_TITLE ${LANG_ENGLISH} "Step 2"
-    LangString PAGE2_SUBTITLE ${LANG_ENGLISH} "If needed, add custom content"
     Function EventSpecificContent
-        !insertmacro MUI_HEADER_TEXT $(PAGE2_TITLE) $(PAGE2_SUBTITLE)
         StrCpy $0 "CONTENT_ID_GOES_HERE"
         IfFileExists "$AppData\Local\High Fidelity\$0\*.*" content_found content_not_found
         content_found:
-            MessageBox MB_OK "Custom content found!"
+            ;MessageBox MB_OK "Custom content found!"
             Goto EventSpecificContent_finish
         content_not_found:
-            MessageBox MB_OK "Custom content NOT found!"
+            ;MessageBox MB_OK "Custom content NOT found!"
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
             Call LaunchInterface
@@ -338,13 +335,11 @@ Page custom MakeSureHiFiInstalled
 ; START Step 3:
 ; Launch Interface with command-line arguments
 ;--------------------------------
-    LangString PAGE3_TITLE ${LANG_ENGLISH} "Step 3"
-    LangString PAGE3_SUBTITLE ${LANG_ENGLISH} "Launch Interface with command-line arguments"
     Function LaunchInterface
-        !insertmacro MUI_HEADER_TEXT $(PAGE3_TITLE) $(PAGE3_SUBTITLE)
         ReadRegStr $0 HKCR "hifi\DefaultIcon" ""
         ${StrRep} '$0' '$0' ',1' ''
         Exec '"$0" --url hifi://zaru'
+        Quit
     FunctionEnd
 ;--------------------------------
 ; END Step 3
