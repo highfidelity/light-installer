@@ -219,12 +219,35 @@
 ;--------------------------------
 ; END General
 ;--------------------------------
+
+;--------------------------------
+; START Installer Pages
+;--------------------------------
+!insertmacro MUI_PAGE_WELCOME
+Page custom MakeSureHiFiInstalled
+!insertmacro MUI_PAGE_INSTFILES
+;--------------------------------
+; END Installer Sections
+;--------------------------------
+
+;--------------------------------
+; START Installer Sections
+;--------------------------------    
+    Section "HiFi Light Installer" HiFiLightInstaller
+    
+    SectionEnd
+;--------------------------------
+; END Installer Sections
+;--------------------------------
   
 ;--------------------------------
 ; START Step 1:
 ; If needed, install High Fidelity Interface
 ;--------------------------------
+    LangString PAGE_TITLE ${LANG_ENGLISH} "Title"
+    LangString PAGE_SUBTITLE ${LANG_ENGLISH} "Subtitle"
     Function MakeSureHiFiInstalled
+        !insertmacro MUI_HEADER_TEXT $(PAGE_TITLE) $(PAGE_SUBTITLE)
         ; Try getting the location of Interface.exe by checking
         ;     the path associated with 'hifi://' URLs
         ReadRegStr $0 HKCR "hifi\DefaultIcon" ""
@@ -239,12 +262,13 @@
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 ;     Get the result, then kill Interface.exe if it's still running.
-                ;TODO: Put protocol version number into $1
-                ;Exec '"$0" --protocolVersion'
-                StrCpy $1 100 ; FIXME!!!
+                ExecWait '"$0" --protocolVersion protocol.txt'
+                FileOpen $4 "protocol.txt" r
+                FileRead $4 $1 ; Read the protocol version from the file into $1
+                FileClose $4
+                ${nsProcess::KillProcess} "interface.exe" $R0
                 ${If} $1 >= 1000
                     MessageBox MB_OK "$0 Protocol Version $1 is new enough!"
-                    ${nsProcess::KillProcess} "interface.exe" $R0
                 ${Else}
                     ${StrContains} $3 "steamapps" $0 ; Double-check Interface.exe isn't a Steam version by checking the EXE path
                     StrCmp $3 "" not_installed_from_steam
@@ -256,8 +280,6 @@
                     installed_from_steam:
                         MessageBox MB_OK "$0 Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
                 ${EndIf}
-                ${nsProcess::KillProcess} "interface.exe" $R0
-                
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
                 MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed." IDOK continue_download IDABORT abort_download
@@ -271,23 +293,11 @@
                     StrCmp $R0 "success" +3
                         MessageBox MB_OK "Download failed with status: $R0"
                         Goto finish
-                    Exec '"$4"'
+                    ExecWait '"$4"'
         ${EndIf}
         finish: 
             ${nsProcess::Unload}
     FunctionEnd
 ;--------------------------------
 ; END Step 1
-;--------------------------------
-
-;--------------------------------
-; START Installer Sections
-;--------------------------------
-    Section "HiFi Download" HiFiDownload
-    
-        Call MakeSureHiFiInstalled
-    
-    SectionEnd
-;--------------------------------
-; END Installer Sections
 ;--------------------------------
