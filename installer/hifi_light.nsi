@@ -246,19 +246,14 @@
                     MessageBox MB_OK "$0 Protocol Version $1 is new enough!"
                     ${nsProcess::KillProcess} "interface.exe" $R0
                 ${Else}
-                    ;TODO: Put Steam status into $2
-                    ;Exec '"$0" --installationPortal'
-                    StrCpy $2 "notsteam" ; FIXME!!!
-                    StrCmp $2 "Steam" portal_is_steam portal_maybe_isnt_steam
-                    portal_maybe_isnt_steam:
-                        ${StrContains} $3 "steadm" $0 ; Double-check Interface.exe isn't a Steam version by checking the EXE path
-                        StrCmp $3 "" installation_portal_notsteam
-                            Goto portal_is_steam
-                            installation_portal_notsteam:
-                                MessageBox MB_OK "$0 Installation Portal is NOT STEAM"
-                                MessageBox MB_OK "$0 Protocol Version $1 is too old."
+                    ${StrContains} $3 "steamapps" $0 ; Double-check Interface.exe isn't a Steam version by checking the EXE path
+                    StrCmp $3 "" not_installed_from_steam
+                        Goto installed_from_steam
+                        not_installed_from_steam:
+                            MessageBox MB_OK "$0 Installation Portal is NOT STEAM"
+                            MessageBox MB_OK "$0 Protocol Version $1 is too old."
                                 Goto interface_not_found
-                    portal_is_steam:
+                    installed_from_steam:
                         MessageBox MB_OK "$0 Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
                 ${EndIf}
                 ${nsProcess::KillProcess} "interface.exe" $R0
@@ -267,7 +262,7 @@
             interface_not_found: ; We need to (download and install) High Fidelity Interface
                 MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed." IDOK continue_download IDABORT abort_download
                 abort_download:
-                    MessageBox MB_OK "Aborting download"
+                    MessageBox MB_OK "Aborting download."
                     Goto finish
                 continue_download:
                     StrCpy $4 "$TEMP\hifi_installer.exe"
