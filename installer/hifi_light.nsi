@@ -169,11 +169,23 @@
 
             ; the process is running, ask the user to close it
             MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-            "The installation process cannot continue while ${displayName} is running.$\r$\nPlease close it and click Retry to continue." \
-            /SD IDCANCEL IDRETRY Prompt_${UniqueID} IDCANCEL 0
-
-            ; If the user decided to cancel, stop the current installer/uninstaller
-            Abort
+            "The installation process cannot continue while ${displayName} is running.$\r$\nPress Retry to automatically end the process and continue." \
+            /SD IDCANCEL IDRETRY +1 IDCANCEL 0
+            
+            Abort ; If the user decided to cancel, stop the current installer/uninstaller
+            
+            ${nsProcess::KillProcess} ${applicationName} $R1
+            
+            ${If} $R1 == 0
+                Goto Prompt_${UniqueID}
+            ${Else}
+                MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+                "${displayName} couldn't be automatically closed.$\r$\nPlease close it manually, then press Retry to continue." \
+                /SD IDCANCEL IDRETRY Prompt_${UniqueID} IDCANCEL 0
+                
+                Abort  ; If the user decided to cancel, stop the current installer/uninstaller
+            ${EndIf}
+            
         ${Else}
             MessageBox MB_OK "${displayName} is not running."
         ${EndIf}
@@ -262,20 +274,19 @@ Page custom MakeSureHiFiInstalled
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 ;     Get the result, then kill Interface.exe if it's still running.
-                ExecWait '"$0" --protocolVersion protocol.txt'
-                FileOpen $4 "protocol.txt" r
-                FileRead $4 $1 ; Read the protocol version from the file into $1
+                ExecWait '"$0" --version $TEMP\version.txt'
+                FileOpen $4 "$TEMP\version.txt" r
+                FileRead $4 $1 ; Read the Interface version from the file into $1
                 FileClose $4
                 ${nsProcess::KillProcess} "interface.exe" $R0
-                ${If} $1 >= 1000
-                    MessageBox MB_OK "$0 Protocol Version $1 is new enough!"
+                ${If} $1 == "PR10758"
+                    MessageBox MB_OK "$0 Interface Version $1 is correct!"
                 ${Else}
                     ${StrContains} $3 "steamapps" $0 ; Double-check Interface.exe isn't a Steam version by checking the EXE path
                     StrCmp $3 "" not_installed_from_steam
                         Goto installed_from_steam
                         not_installed_from_steam:
-                            MessageBox MB_OK "$0 Installation Portal is NOT STEAM"
-                            MessageBox MB_OK "$0 Protocol Version $1 is too old."
+                            MessageBox MB_OK "$0 Installation Portal is NOT STEAM. Interface Version $1 is incorrect."
                                 Goto interface_not_found
                     installed_from_steam:
                         MessageBox MB_OK "$0 Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
@@ -288,7 +299,7 @@ Page custom MakeSureHiFiInstalled
                     Goto finish
                 continue_download:
                     StrCpy $4 "$TEMP\hifi_installer.exe"
-                    NSISdl::download http://builds.highfidelity.com/HighFidelity-Beta-6716.exe $4
+                    NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/919/HighFidelity-Beta-PR10758-41003bd3079d1309b17134950f6c94922c8b4520.exe $4
                     Pop $R0 ; Get the download process return value
                     StrCmp $R0 "success" +3
                         MessageBox MB_OK "Download failed with status: $R0"
