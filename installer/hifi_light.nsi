@@ -219,8 +219,9 @@
     ; Installer filename
     OutFile "HiFi_Express.exe"
 
-    ; Default installation folder
-    InstallDir "$PROGRAMFILES64\High Fidelity"
+    !define MUI_ICON "icons\interface.ico"
+    !define MUI_HEADERIMAGE
+    !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -232,6 +233,7 @@
 ; START Installer Pages
 ;--------------------------------
 !insertmacro MUI_PAGE_INSTFILES
+!insertmacro MUI_LANGUAGE "English"
 ;--------------------------------
 ; END Installer Sections
 ;--------------------------------
