@@ -349,6 +349,8 @@
     Function LaunchInterface
         ReadRegStr $InterfacePath HKCR "hifi\DefaultIcon" ""
         ${StrRep} '$InterfacePath' '$InterfacePath' ',1' ''
+        ; It's feasible that the installed path changed between Step 1
+        ;     and now... Right now there's no handler for that error case.
         Exec '"$InterfacePath" --url hifi://zaru'
         Quit
     FunctionEnd
