@@ -270,6 +270,8 @@
         ;     the path associated with 'hifi://' URLs
         ReadRegStr $InterfacePath HKCR "hifi\DefaultIcon" ""
         ${StrRep} '$InterfacePath' '$InterfacePath' ',1' ''
+        ; THIS NEXT LINE IS TEMPORARY, WHILE THIS IS A PR:
+        ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' 'High Fidelity - PR10758'
         ${If} $InterfacePath != ""
             ; Make sure the file actually exists in the filesystem
             IfFileExists $InterfacePath interface_found interface_not_found
@@ -280,7 +282,7 @@
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 GetFunctionAddress $R0 InterfaceTimerExpired
-                ThreadTimer::Start 2000 1 $R0 ; Uses ThreadTimer plugin
+                ThreadTimer::Start 3000 1 $R0 ; Uses ThreadTimer plugin
                 ExecWait '"$InterfacePath" --suppress-settings-reset --version $TEMP\version.txt'
                 ThreadTimer::Stop
                 FileOpen $FileHandle "$TEMP\version.txt" r
@@ -347,11 +349,15 @@
 ; Launch Interface with command-line arguments
 ;--------------------------------
     Function LaunchInterface
+        ; Make sure that no High Fidelity application is already running
+        !insertmacro CheckForRunningApplications
         ReadRegStr $InterfacePath HKCR "hifi\DefaultIcon" ""
         ${StrRep} '$InterfacePath' '$InterfacePath' ',1' ''
+        ; THIS NEXT LINE IS TEMPORARY, WHILE THIS IS A PR:
+        ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' 'High Fidelity - PR10758'
         ; It's feasible that the installed path changed between Step 1
         ;     and now... Right now there's no handler for that error case.
-        Exec '"$InterfacePath" --url hifi://zaru'
+        Exec '"$InterfacePath" --url hifi://zaru --skipTutorial'
         Quit
     FunctionEnd
 ;--------------------------------
