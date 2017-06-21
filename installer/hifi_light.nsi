@@ -33,16 +33,12 @@
         Push `${string}`
         Push `${old}`
         Push `${new}`
-        !ifdef __UNINSTALL__
-            Call un.StrRep
-        !else
-            Call StrRep
-        !endif
+        Call StrRep
         Pop ${output}
     !macroend
      
-    !macro Func_StrRep un
-        Function ${un}StrRep
+    !macro Func_StrRep
+        Function StrRep
             Exch $R2 ;new
             Exch 1
             Exch $R1 ;old
@@ -92,8 +88,7 @@
             Exch $R1
         FunctionEnd
     !macroend
-    !insertmacro Func_StrRep ""
-    !insertmacro Func_StrRep "un."
+    !insertmacro Func_StrRep
     ;--------------------------------
     ; END String Replace Macro
     ;--------------------------------
@@ -172,7 +167,7 @@
             "The installation process cannot continue while ${displayName} is running.$\r$\nPress Retry to automatically end the process and continue." \
             /SD IDCANCEL IDRETRY +1 IDCANCEL 0
             
-            Abort ; If the user decided to cancel, stop the current installer/uninstaller
+            Abort ; If the user decided to cancel, stop the current installer
             
             ${nsProcess::KillProcess} ${applicationName} $R1
             
@@ -183,7 +178,7 @@
                 "${displayName} couldn't be automatically closed.$\r$\nPlease close it manually, then press Retry to continue." \
                 /SD IDCANCEL IDRETRY Prompt_${UniqueID} IDCANCEL 0
                 
-                Abort  ; If the user decided to cancel, stop the current installer/uninstaller
+                Abort  ; If the user decided to cancel, stop the current installer
             ${EndIf}
             
         ${Else}
