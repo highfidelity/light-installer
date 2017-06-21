@@ -303,19 +303,15 @@
                 Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed. This is a developer dialog box that'll be removed in the future." IDOK continue_download IDABORT abort_download ; FIXME: Remove this dialog box! It only exists right now so that devs don't redownload the same file over and over during testing.
-                abort_download:
-                    MessageBox MB_OK "Aborting download and quitting installer."
+                ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed."
+                StrCpy $DownloadedFilePath "$TEMP\hifi_installer.exe"
+                NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe $DownloadedFilePath
+                Pop $R0 ; Get the download process return value
+                StrCmp $R0 "success" +3
+                    MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
                     Quit
-                continue_download:
-                    StrCpy $DownloadedFilePath "$TEMP\hifi_installer.exe"
-                    NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe $DownloadedFilePath
-                    Pop $R0 ; Get the download process return value
-                    StrCmp $R0 "success" +3
-                        MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
-                        Quit
-                    ExecWait '"$DownloadedFilePath"'
-                    Call MakeSureHiFiInstalled
+                ExecWait '"$DownloadedFilePath"'
+                Call MakeSureHiFiInstalled
         ${EndIf}
         ${nsProcess::Unload}
     FunctionEnd
