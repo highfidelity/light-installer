@@ -13,7 +13,7 @@ When a user runs `High_Fidelity_Express.exe`, the following behavior occurs:
 1. We **ask for administrator permissions** so that it can perform various operations (like reading from the registry and creating files).
 2. We **verify that the "correct" version of High Fidelity Interface is installed** on the user's computer.
   1. We read from the registry at `HKEY_CLASSES_ROOT\hifi\DefaultIcon` to **determine the path of `interface.exe`** that the user installed most recently
-        - _(FYI: `HKCR\_` is where the registry keys go that determine what to do when you click on, say, a `hifi://` or `itunes://` link)_
+        - _(FYI: `HKCR\<protocol>\shell\open\command\(Default)` is where the registry keys go that determine what to do when you click on, say, a `hifi://` or `itunes://` link)_
     2. **If Interface _is found_** at that path:
         1. We **check if Interface or Sandbox is running**, and **kill those processes** if they are
         2. We run that **`interface.exe` with the `--version`** command-line switch
