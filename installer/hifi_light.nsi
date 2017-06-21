@@ -217,7 +217,7 @@
     Name "High Fidelity Express"
 
     ; Installer filename
-    OutFile "HiFi_Express.exe"
+    OutFile "High_Fidelity_Express.exe"
 
     !define MUI_ICON "icons\interface.ico"
     !define MUI_HEADERIMAGE
@@ -279,8 +279,8 @@
                 ; 1: Make sure that no High Fidelity application is already running
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
-                GetFunctionAddress $0 InterfaceTimerExpired
-                ThreadTimer::Start 2000 1 $0 ; Uses ThreadTimer plugin
+                GetFunctionAddress $R0 InterfaceTimerExpired
+                ThreadTimer::Start 2000 1 $R0 ; Uses ThreadTimer plugin
                 ExecWait '"$InterfacePath" --version $TEMP\version.txt'
                 ThreadTimer::Stop
                 FileOpen $FileHandle "$TEMP\version.txt" r
