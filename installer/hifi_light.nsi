@@ -235,7 +235,6 @@
 ;--------------------------------
 ; START Installer Pages
 ;--------------------------------
-!insertmacro MUI_PAGE_WELCOME
 !insertmacro MUI_PAGE_INSTFILES
 ;--------------------------------
 ; END Installer Sections
