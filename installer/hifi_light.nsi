@@ -7,6 +7,7 @@
 ;
 ; Compilation Requirements:
 ;   - http://nsis.sourceforge.net/NsProcess_plugin
+;   - http://nsis.sourceforge.net/ThreadTimer_plug-in
 ;
 ; -------------------------------------------------------------------------------------------------
 
@@ -253,6 +254,10 @@
 ; START Step 1:
 ; If needed, install High Fidelity Interface
 ;--------------------------------
+    Function InterfaceTimerExpired
+        ${nsProcess::KillProcess} "interface.exe" $R2
+    FunctionEnd
+
     Function MakeSureHiFiInstalled
         ; Try getting the location of Interface.exe by checking
         ;     the path associated with 'hifi://' URLs
@@ -267,7 +272,10 @@
                 ; 1: Make sure that no High Fidelity application is already running
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
+                GetFunctionAddress $1 InterfaceTimerExpired
+                ThreadTimer::Start 2000 1 $1 ; Uses ThreadTimer plugin
                 ExecWait '"$0" --version $TEMP\version.txt'
+                ThreadTimer::Stop
                 FileOpen $4 "$TEMP\version.txt" r
                 FileRead $4 $1 ; Read the Interface version from the file into $1
                 FileClose $4
@@ -287,16 +295,17 @@
             interface_not_found: ; We need to (download and install) High Fidelity Interface
                 MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed." IDOK continue_download IDABORT abort_download
                 abort_download:
-                    ;MessageBox MB_OK "Aborting download."
-                    Goto finish
+                    MessageBox MB_OK "Aborting download and quitting installer."
+                    Quit
                 continue_download:
                     StrCpy $4 "$TEMP\hifi_installer.exe"
-                    NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/919/HighFidelity-Beta-PR10758-41003bd3079d1309b17134950f6c94922c8b4520.exe $4
+                    NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe $4
                     Pop $R0 ; Get the download process return value
                     StrCmp $R0 "success" +3
                         MessageBox MB_OK "Download failed with status: $R0"
                         Goto finish
                     ExecWait '"$4"'
+                    Call MakeSureHiFiInstalled
         ${EndIf}
         finish: 
             ${nsProcess::Unload}
