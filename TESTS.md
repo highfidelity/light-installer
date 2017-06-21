@@ -3,25 +3,30 @@
 Reference the Initial States below when performing these tests.
 
 ### Initial States
-#### Initial State A - Completely Clean Slate
+#### Initial State A
+***Completely Clean Slate***
 - There exists no "High Fidelity" entires in Windows' "Add or Remove Programs" list.
 - There exists no folders related to "High Fidelity" in `%AppData%` (i.e. `C:\Users\<Username>\AppData\Roaming`)
 - There exists no folders related to "High Fidelity" in `%LocalAppData%` (i.e. `C:\Users\<Username>\AppData\Local`)
 - The registry key `HKEY_CLASSES_ROOT\hifi` doesn't exist
 
-#### Initial State B - Old Interface Installed
+#### Initial State B
+***Old Interface Installed***
 - Install the latest version of High Fidelity from https://highfidelity.com/download
 - Ensure that version of High Fidelity is **not running**
 
-#### Initial State C - Old Interface Running
+#### Initial State C
+***Old Interface Running***
 - Install the latest version of High Fidelity from https://highfidelity.com/download
 - Run Sandbox and Interface
 
-#### Initial State D - Correct Interface Installed
+#### Initial State D
+***Correct Interface Installed***
 - Install the version of High Fidelity from [here](https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe).
 - Ensure that neither Sandbox nor Interface are running
 
-#### Initial State E - Correct Interface Running
+#### Initial State E
+***Correct Interface Running***
 - Install the version of High Fidelity from [here](https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe).
 - Run that version of Interface
 - Ensure your Sandbox isn't running
@@ -36,7 +41,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>1</td>
-            <td>State A</td>
+            <td><a href="#initial-state-a">State A</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
@@ -50,7 +55,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>2</td>
-            <td>State A</td>
+            <td><a href="#initial-state-a">State A</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
@@ -63,7 +68,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>3</td>
-            <td>State B</td>
+            <td><a href="#initial-state-b">State B</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
@@ -77,7 +82,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>4</td>
-            <td>State C</td>
+            <td><a href="#initial-state-c">State C</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
@@ -94,7 +99,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>5</td>
-            <td>State D</td>
+            <td><a href="#initial-state-d">State D</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
@@ -107,7 +112,7 @@ Reference the Initial States below when performing these tests.
         </tr>
             <tr>
             <td>6</td>
-            <td>State E</td>
+            <td><a href="#initial-state-e">State E</a></td>
             <td>
                 <ol>
                     <li>Run `High_Fidelity_Express.exe`</li>
