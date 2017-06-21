@@ -166,11 +166,11 @@
             ; the process is running, ask the user to close it
             MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
             "The installation process cannot continue while ${displayName} is running.$\r$\nPress Retry to automatically end the process and continue." \
-            /SD IDCANCEL IDRETRY +1 IDCANCEL 0
-            
+            /SD IDCANCEL IDRETRY +2 IDCANCEL 0
             Abort ; If the user decided to cancel, stop the current installer
             
             ${nsProcess::KillProcess} ${applicationName} $R1
+            Sleep 1000
             
             ${If} $R1 == 0
                 Goto Prompt_${UniqueID}
@@ -281,7 +281,7 @@
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 GetFunctionAddress $R0 InterfaceTimerExpired
                 ThreadTimer::Start 2000 1 $R0 ; Uses ThreadTimer plugin
-                ExecWait '"$InterfacePath" --version $TEMP\version.txt'
+                ExecWait '"$InterfacePath" --suppress-settings-reset --version $TEMP\version.txt'
                 ThreadTimer::Stop
                 FileOpen $FileHandle "$TEMP\version.txt" r
                 FileRead $FileHandle $InterfaceVersion ; Read the Interface version from the file into $InterfaceVersion
@@ -296,11 +296,12 @@
                             ;MessageBox MB_OK "$InterfacePath Installation Portal is NOT STEAM. Interface Version $InterfaceVersion is incorrect."
                                 Goto interface_not_found
                     installed_from_steam:
-                        ;MessageBox MB_OK "$InterfacePath Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
+                        MessageBox MB_OK "$InterfacePath Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
                 ${EndIf}
+                Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed." IDOK continue_download IDABORT abort_download
+                MessageBox MB_OKCANCEL "High Fidelity needs to be downloaded and installed. This is a developer dialog box that'll be removed in the future." IDOK continue_download IDABORT abort_download ; FIXME: Remove this dialog box! It only exists right now so that devs don't redownload the same file over and over during testing.
                 abort_download:
                     MessageBox MB_OK "Aborting download and quitting installer."
                     Quit
@@ -309,13 +310,12 @@
                     NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe $DownloadedFilePath
                     Pop $R0 ; Get the download process return value
                     StrCmp $R0 "success" +3
-                        MessageBox MB_OK "Download failed with status: $R0"
-                        Goto finish
+                        MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
+                        Quit
                     ExecWait '"$DownloadedFilePath"'
                     Call MakeSureHiFiInstalled
         ${EndIf}
-        finish: 
-            ${nsProcess::Unload}
+        ${nsProcess::Unload}
     FunctionEnd
 ;--------------------------------
 ; END Step 1
