@@ -28,7 +28,7 @@ When a user runs `High_Fidelity_Jaws_Event.exe`, the following behavior occurs:
         1. We will **start downloading the correct version** of the High Fidelity installer to the user's `TEMP` directory. The installer will display download status.
         2. Once the download is complete, we will **silently run the full High Fidelity Interface installer**.
            1. No questions are asked of the user. The values from previous installations are used, if any (for installing sandbox, creating start menus, etc.). However,
-           2. I there is no previous installation, we do not install Sandbox. (If there was a previous installation that specifically included Sandbox, we do update it.)
+           2. If there is no previous installation, we do not install Sandbox. (If there was a previous installation that specifically included Sandbox, we do update it.)
            3. Regardless of whatever was done before, we do **not run Interface or Sandbox at the end of this step**.
         3. Once the full High Fidelity Interface installer completes, we will jump back to step (2) above; **the light installer will re-verify** that the correct version of Interface is installed on the system.
 3. We **verify that the user has the "correct" custom content** cached on their hard drive. Right now, this is a "dummy" step, and does nothing.
