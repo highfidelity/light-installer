@@ -214,14 +214,24 @@
 ; START General
 ;--------------------------------
     ; Installer application name
-    Name "High Fidelity Express"
+    Name "High Fidelity Jaws Event"
 
     ; Installer filename
-    OutFile "High_Fidelity_Express.exe"
+    OutFile "High_Fidelity_Jaws_Event.exe"
 
     !define MUI_ICON "icons\interface.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
+    !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
+    ;;!define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6755.exe"
+    !define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
+    ;; If the above is any release or dev-download build, the following should be an empty string.
+    ;; However, if you need to use a PR build during development:
+    ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
+    ;;  2. make sure that some older NON-PR build is already installed (such as an older release). This puts an entry in the registry so we don't fail when checking.
+    ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
+    !define PR_BUILD_DIRECTORY "High Fidelity - PR10794"
+    !define EVENT_LOCATION "hifi://dev-playa/event"
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -265,13 +275,17 @@
     Var FileHandle
     Var DownloadedFilePath
     Var StrContainsResult
-    Function MakeSureHiFiInstalled
-        ; Try getting the location of Interface.exe by checking
-        ;     the path associated with 'hifi://' URLs
+    Function GetInterfacePath
+        ; Try getting the location of Interface.exe into InterfacePath by checking
+        ;     the path associated with 'hifi://' URLs or its icon
         ReadRegStr $InterfacePath HKCR "hifi\DefaultIcon" ""
         ${StrRep} '$InterfacePath' '$InterfacePath' ',1' ''
-        ; THIS NEXT LINE IS TEMPORARY, WHILE THIS IS A PR:
-        ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' 'High Fidelity - PR10758'
+        ${IfNot} "${PR_BUILD_DIRECTORY}" == ""
+          ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' "${PR_BUILD_DIRECTORY}"
+        ${EndIf}
+    FunctionEnd
+    Function MakeSureHiFiInstalled
+        Call GetInterfacePath
         ${If} $InterfacePath != ""
             ; Make sure the file actually exists in the filesystem
             IfFileExists $InterfacePath interface_found interface_not_found
@@ -283,14 +297,15 @@
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 GetFunctionAddress $R0 InterfaceTimerExpired
                 ThreadTimer::Start 3000 1 $R0 ; Uses ThreadTimer plugin
-                ExecWait '"$InterfacePath" --suppress-settings-reset --version $TEMP\version.txt'
+                ExecWait '"$InterfacePath" --suppress-settings-reset --protocolVersion $TEMP\version.txt'
                 ThreadTimer::Stop
                 FileOpen $FileHandle "$TEMP\version.txt" r
                 FileRead $FileHandle $InterfaceVersion ; Read the Interface version from the file into $InterfaceVersion
                 FileClose $FileHandle
-                ${If} $InterfaceVersion == "PR10758"
-                    ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
+                ${If} $InterfaceVersion == "${HIFI_PROTOCOL_VERSION}"
+                  ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
                 ${Else}
+                    ;MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
                     ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
                     StrCmp $StrContainsResult "" not_installed_from_steam
                         Goto installed_from_steam
@@ -303,14 +318,14 @@
                 Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed."
+                ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
                 StrCpy $DownloadedFilePath "$TEMP\hifi_installer.exe"
-                NSISdl::download https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/934/HighFidelity-Beta-PR10758-fea8a95fc7ab9f8e4c09313f5d72b167d928bcd9.exe $DownloadedFilePath
+                NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
                 Pop $R0 ; Get the download process return value
                 StrCmp $R0 "success" +3
                     MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
                     Quit
-                ExecWait '"$DownloadedFilePath"'
+                ExecWait '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
                 Call MakeSureHiFiInstalled
         ${EndIf}
         ${nsProcess::Unload}
@@ -347,13 +362,8 @@
     Function LaunchInterface
         ; Make sure that no High Fidelity application is already running
         !insertmacro CheckForRunningApplications
-        ReadRegStr $InterfacePath HKCR "hifi\DefaultIcon" ""
-        ${StrRep} '$InterfacePath' '$InterfacePath' ',1' ''
-        ; THIS NEXT LINE IS TEMPORARY, WHILE THIS IS A PR:
-        ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' 'High Fidelity - PR10758'
-        ; It's feasible that the installed path changed between Step 1
-        ;     and now... Right now there's no handler for that error case.
-        Exec '"$InterfacePath" --url hifi://zaru --skipTutorial'
+        Call GetInterfacePath ;; In case it changed during installation of a new version
+        Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial'
         Quit
     FunctionEnd
 ;--------------------------------
