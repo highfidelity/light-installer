@@ -303,9 +303,9 @@
                 FileRead $FileHandle $InterfaceVersion ; Read the Interface version from the file into $InterfaceVersion
                 FileClose $FileHandle
                 ${If} $InterfaceVersion == "${HIFI_PROTOCOL_VERSION}"
-                  MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
+                  ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
                 ${Else}
-                    MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
+                    ;MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
                     ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
                     StrCmp $StrContainsResult "" not_installed_from_steam
                         Goto installed_from_steam
@@ -318,7 +318,7 @@
                 Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
+                ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
                 StrCpy $DownloadedFilePath "$TEMP\hifi_installer.exe"
                 NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
                 Pop $R0 ; Get the download process return value
