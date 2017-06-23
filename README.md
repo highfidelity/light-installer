@@ -5,6 +5,7 @@ A light installer for High Fidelity VR. Built using NSIS.
 - [NSIS 3.01](http://nsis.sourceforge.net/Download)
 - [NSIS NsProcess Plugin](http://nsis.sourceforge.net/NsProcess_plugin)
 - [NSIS ThreadTimer Plugin](http://nsis.sourceforge.net/ThreadTimer_plug-in)
+- [NSIS Nsisunz Plugin] (http://nsis.sourceforge.net/Nsisunz_plug-in)
 
 ## Current "High Fidelity Express" Installer Flow
 _This section of the README is current as of **2017-06-22 05:00 PM PDT**. It'll be updated as the installer logic matures._
@@ -31,12 +32,12 @@ When a user runs `High_Fidelity_Jaws_Event.exe`, the following behavior occurs:
            2. If there is no previous installation, we do not install Sandbox. (If there was a previous installation that specifically included Sandbox, we do update it.)
            3. Regardless of whatever was done before, we do **not run Interface or Sandbox at the end of this step**.
         3. Once the full High Fidelity Interface installer completes, we will jump back to step (2) above; **the light installer will re-verify** that the correct version of Interface is installed on the system.
-3. We **verify that the user has the "correct" custom content** cached on their hard drive. Right now, this is a "dummy" step, and does nothing.
+3. We **verify that the user has the "correct" custom content** cached on their hard drive.
     1. If the user **_does have_ the "correct" custom content** cached on their hard drive:
         1. We continue to the next step.
     2. If the user **_does not have_ the "correct" custom content** cached on their hard drive:
         1. We will **download the correct set of custom content** from the High Fidelity website and place it in the proper directory.
-4. We, again determine the (possibly new) path of `interface.exe`, then **run `interface.exe` using the following command: `interface.exe --url hifi://dev-playa/event --skipTutorial`**
+4. We, again determine the (possibly new) path of `interface.exe`, then **run `interface.exe` using the following command: `interface.exe --url hifi://dev-playa/event --skipTutorial --cache _content_set-dir_ --scripts _content-set-dir\scripts_`**. _The cache part doesn't work yet, so we're not yet getting that acceleration. But that's Interface issue, not a micro-installer issue._
     - Now that the user has gotten this far in the installer, the path to `interface.exe` _should be_ either the one installed by the installer in the steps above, OR the path the installer verified to be up-to-date enough for the event.
 
 ## Cumulative Test Plan

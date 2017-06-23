@@ -223,7 +223,7 @@
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
-    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6768.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
@@ -232,6 +232,8 @@
     ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
     !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
+    !define CONTENT_ID "jaws-1"
+    !define CONTENT_SET "https://hifi-content.s3.amazonaws.com/howard/zaru-content-custom-scripts.zip"
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -275,6 +277,7 @@
     Var FileHandle
     Var DownloadedFilePath
     Var StrContainsResult
+    Var ContentPath
     Function GetInterfacePath
         ; Try getting the location of Interface.exe into InterfacePath by checking
         ;     the path associated with 'hifi://' URLs or its icon
@@ -338,15 +341,25 @@
 ; START Step 2:
 ; If needed, add custom, pre-defined content to user's filesystem
 ;--------------------------------
-    Var ContentId
     Function EventSpecificContent
-        StrCpy $ContentId "CONTENT_ID_GOES_HERE"
-        IfFileExists "$AppData\Local\High Fidelity\$ContentId\*.*" content_found content_not_found
+        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
+        ;MessageBox MB_OK "Check content set at $ContentPath"
+        IfFileExists "$ContentPath" content_found content_not_found
         content_found:
             ;MessageBox MB_OK "Custom content found!"
             Goto EventSpecificContent_finish
         content_not_found:
-            ;MessageBox MB_OK "Custom content NOT found!"
+            ;MessageBox MB_OK "Custom content NOT found! Downloading from ${CONTENT_SET} to $TEMP\hifi_content.zip"
+            StrCpy $DownloadedFilePath "$TEMP\hifi_content.zip"
+            NSISdl::download "${CONTENT_SET}" $DownloadedFilePath
+            Pop $R0 ; Get the download process return value
+            StrCmp $R0 "success" +3
+               MessageBox MB_OK "Content set download failed with status: $R0. Press OK to quit this installer."
+               Quit
+            nsisunz::Unzip "$DownloadedFilePath" "$ContentPath"
+            Pop $R0
+            StrCmp $R0 "success" EventSpecificContent_finish
+               MessageBox MB_OK "Cuntent set uncompression failed with status: $R0. Press OK to quit this installer."
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
             Call LaunchInterface
@@ -363,7 +376,7 @@
         ; Make sure that no High Fidelity application is already running
         !insertmacro CheckForRunningApplications
         Call GetInterfacePath ;; In case it changed during installation of a new version
-        Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial'
+        Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         Quit
     FunctionEnd
 ;--------------------------------
