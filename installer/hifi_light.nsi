@@ -8,7 +8,7 @@
 ; Compilation Requirements:
 ;   - http://nsis.sourceforge.net/NsProcess_plugin
 ;   - http://nsis.sourceforge.net/ThreadTimer_plug-in
-;
+;   - http://nsis.sourceforge.net/Inetc_plug-in
 ; -------------------------------------------------------------------------------------------------
 
 
@@ -227,15 +227,16 @@
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
     !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
-    ; Small test exe for testing.
+    ; Small test exe for testing/debugging.
     ;;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
     ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
     ;;  2. make sure that some older NON-PR build is already installed (such as an older release). This puts an entry in the registry so we don't fail when checking.
     ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
-    !define PR_BUILD_DIRECTORY ""
+    !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
+    !define HIFI_CONTENT_URL "https://hifi-content.s3.amazonaws.com/howard/zaru-content-custom-scripts.zip"
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -247,8 +248,12 @@
 ; START Installer Pages
 ;--------------------------------
 !insertmacro MUI_PAGE_INSTFILES
+!define MUI_TEXT_INSTALLING_TITLE "High Fidelity - Event Installer"
+!define MUI_TEXT_INSTALLING_SUBTITLE " "
 Page custom HiFiInstallingPage
 !define MUI_PAGE_CUSTOMFUNCTION_PRE LaunchInterface
+!define MUI_TEXT_FINISH_TITLE "High Fidelity - Event Installer"
+!define MUI_TEXT_FINISH_SUBTITLE " "
 !insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_LANGUAGE "English"
 ;--------------------------------
@@ -265,6 +270,13 @@ Page custom HiFiInstallingPage
 ;--------------------------------
 ; END Installer Sections
 ;--------------------------------
+
+Function .onInit
+	InitPluginsDir
+	File /oname=$PLUGINSDIR\hifi1.bmp "images\hifi1.bmp"
+	File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
+	File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
+FunctionEnd
   
 ;--------------------------------
 ; START Step 1:
@@ -340,15 +352,15 @@ Page custom HiFiInstallingPage
                     ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
                     StrCpy $DownloadedFileName "hifi_installer.exe"
                     StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
-                    NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
+                    inetc::get "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
                     Pop $R0 ; Get the download process return value
-                    StrCmp $R0 "success" +3
-                        MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
+                    StrCmp $R0 "OK" +3
+                        MessageBox MB_OK "Download failed with status: $R0. Please try running this installer again."
                         Quit
                     StrCpy $ShouldSkipInstallingPage "false"
                     StrCpy $HadToInstallInterface "true"
                     Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
-                    ; Modified command for use when testing with downloaded "test.exe"
+                    ; Modified command for use when testing/debugging with downloaded "test.exe"
                     ;Exec '"$DownloadedFilePath"'
                 ${EndIf}
         ${EndIf}
@@ -358,6 +370,9 @@ Page custom HiFiInstallingPage
     Var Dialog
     Var Label
     Var ProgressBar
+    Var Image
+    Var ImageHandle
+    Var ContentSilentDownload
     !define PBS_MARQUEE 0x08
     Function CheckInstallComplete
         ${nsProcess::FindProcess} "$DownloadedFileName" $InstallerProcessStatus
@@ -366,16 +381,20 @@ Page custom HiFiInstallingPage
             
             Call MakeSureHiFiInstalled
             
-            ShowWindow $ProgressBar ${SW_HIDE}
-            ${NSD_CreateProgressBar} 0 16 100% 10% ""
-            Pop $ProgressBar
             ${If} $HiFiInstalled == "false"
                 SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity failed to install. Please rerun this installer."
+                ShowWindow $ProgressBar ${SW_HIDE}
+                ${NSD_CreateProgressBar} 0 16 100% 24 ""
+                Pop $ProgressBar
                 SendMessage $ProgressBar ${PBM_SETPOS} 100 0
                 SendMessage $ProgressBar ${PBM_SETSTATE} ${PBST_ERROR} 0
             ${Else}
+                StrCpy $ContentSilentDownload "true"
                 SendMessage $Label ${WM_SETTEXT} "" "STR:Downloading content for Project Jaws..."
                 Call EventSpecificContent
+                ShowWindow $ProgressBar ${SW_HIDE}
+                ${NSD_CreateProgressBar} 0 16 100% 24 ""
+                Pop $ProgressBar
                 SendMessage $ProgressBar ${PBM_SETPOS} 100 0
                 SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
                 ; Enable "Next" button
@@ -383,11 +402,24 @@ Page custom HiFiInstallingPage
                 EnableWindow $0 1
             ${EndIf}
         ${EndIf}
-    FunctionEnd    
+    FunctionEnd
+    Var NextImageFilename
+    Var NextImageNumber
+    Function ChangeImage
+        ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
+        StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
+        IntOp $NextImageNumber $NextImageNumber + 1
+        ${If} $NextImageNumber == 4
+            StrCpy $NextImageNumber 1
+        ${EndIf}
+    FunctionEnd
     Function HiFiInstallingPage
         ${If} $ShouldSkipInstallingPage == "true"
             Abort
         ${EndIf}
+        
+        StrCpy $NextImageNumber "1"
+        StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
         
         nsDialogs::Create 1018
         Pop $Dialog
@@ -399,18 +431,26 @@ Page custom HiFiInstallingPage
         ${NSD_CreateLabel} 0 0 100% 14u "High Fidelity is installing in the background..."
         Pop $Label
 
-        ${NSD_CreateProgressBar} 0 16 100% 10% ""
+        ${NSD_CreateProgressBar} 0 16 100% 24 ""
         Pop $ProgressBar
         ${NSD_AddStyle} $ProgressBar ${PBS_MARQUEE}
-        SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N
+        SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N	
+        
+        ; Images should be 440*180px
+        ${NSD_CreateBitmap} 0 46 100% 100% ""
+        Pop $Image
+        ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
+        IntOp $NextImageNumber $NextImageNumber + 1
         
         ${NSD_CreateTimer} CheckInstallComplete 100
+        ${NSD_CreateTimer} ChangeImage 2500
         
         ; Disable "Next" button
         GetDlgItem $0 $HWNDPARENT 1
         EnableWindow $0 0
         
         nsDialogs::Show
+        ${NSD_FreeImage} $ImageHandle
     FunctionEnd
 ;--------------------------------
 ; END Step 1
@@ -429,6 +469,17 @@ Page custom HiFiInstallingPage
             Goto EventSpecificContent_finish
         content_not_found:
             ;MessageBox MB_OK "Custom content NOT found!"
+            StrCpy $DownloadedFileName "hifi_content.zip"
+            StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
+            ${If} $ContentSilentDownload == "true"
+                inetc::get /SILENT "${HIFI_CONTENT_URL}" $DownloadedFilePath
+            ${Else}
+                inetc::get "${HIFI_CONTENT_URL}" $DownloadedFilePath
+            ${EndIf}
+            Pop $R0 ; Get the download process return value
+            StrCmp $R0 "OK" +3
+                MessageBox MB_OK "Download failed with status: $R0. Please try running this installer again."
+                Quit
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
             ${If} $HadToInstallInterface == "false"
