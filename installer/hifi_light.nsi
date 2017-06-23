@@ -18,6 +18,8 @@
     !include "MUI2.nsh" ; Modern UI
     !include "nsProcess.nsh"
     !include "LogicLib.nsh"
+    !include "nsDialogs.nsh"
+    !include "WinMessages.nsh"
 ;--------------------------------
 ; END Includes
 ;--------------------------------
@@ -224,7 +226,9 @@
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
     ;;!define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6755.exe"
-    !define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
+    ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
+    ; Small test exe for testing.
+    !define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
     ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
@@ -243,6 +247,9 @@
 ; START Installer Pages
 ;--------------------------------
 !insertmacro MUI_PAGE_INSTFILES
+Page custom HiFiInstallingPage
+!define MUI_PAGE_CUSTOMFUNCTION_PRE LaunchInterface
+!insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_LANGUAGE "English"
 ;--------------------------------
 ; END Installer Sections
@@ -253,10 +260,6 @@
 ;--------------------------------    
     Section "Interface" Interface
         Call MakeSureHiFiInstalled
-    SectionEnd
-    
-    Section "Custom Content" CustomContent
-            Call EventSpecificContent
     SectionEnd
 ;--------------------------------
 ; END Installer Sections
@@ -274,7 +277,10 @@
     Var InterfaceVersion
     Var FileHandle
     Var DownloadedFilePath
+    Var DownloadedFileName
     Var StrContainsResult
+    Var ShouldSkipInstallingPage
+    Var HadToInstallInterface
     Function GetInterfacePath
         ; Try getting the location of Interface.exe into InterfacePath by checking
         ;     the path associated with 'hifi://' URLs or its icon
@@ -285,6 +291,8 @@
         ${EndIf}
     FunctionEnd
     Function MakeSureHiFiInstalled
+        StrCpy $ShouldSkipInstallingPage "true"
+        StrCpy $HadToInstallInterface "false"
         Call GetInterfacePath
         ${If} $InterfacePath != ""
             ; Make sure the file actually exists in the filesystem
@@ -303,7 +311,9 @@
                 FileRead $FileHandle $InterfaceVersion ; Read the Interface version from the file into $InterfaceVersion
                 FileClose $FileHandle
                 ${If} $InterfaceVersion == "${HIFI_PROTOCOL_VERSION}"
-                  ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
+                    ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
+                    ${nsProcess::Unload}
+                    Call EventSpecificContent
                 ${Else}
                     ;MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
                     ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
@@ -319,16 +329,65 @@
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
                 ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
-                StrCpy $DownloadedFilePath "$TEMP\hifi_installer.exe"
+                StrCpy $DownloadedFileName "hifi_installer.exe"
+                StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
                 NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
                 Pop $R0 ; Get the download process return value
                 StrCmp $R0 "success" +3
                     MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
                     Quit
-                ExecWait '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
-                Call MakeSureHiFiInstalled
+                StrCpy $ShouldSkipInstallingPage "false"
+                StrCpy $HadToInstallInterface "true"
+                ;Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
+                ; Modified command for use when testing with downloaded "test.exe"
+                Exec '"$DownloadedFilePath"'
         ${EndIf}
-        ${nsProcess::Unload}
+    FunctionEnd
+    
+    Var InstallerProcessStatus
+    Var Dialog
+    Var Label
+    Var ProgressBar
+    !define PBS_MARQUEE 0x08
+    Function CheckInstallComplete
+        ${nsProcess::FindProcess} "$DownloadedFileName" $InstallerProcessStatus
+        ${If} $InstallerProcessStatus != "0"
+            ${NSD_KillTimer} CheckInstallComplete
+            
+            Call MakeSureHiFiInstalled
+            
+            SendMessage $Label ${WM_SETTEXT} "" "STR:Downloading content for Project Jaws..."
+            Call EventSpecificContent
+            ShowWindow $ProgressBar ${SW_HIDE}
+            ${NSD_CreateProgressBar} 0 16 100% 10% ""
+            Pop $ProgressBar
+            SendMessage $ProgressBar ${PBM_SETPOS} 100 0
+            SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
+        ${EndIf}
+    FunctionEnd    
+    Function HiFiInstallingPage
+        ${If} $ShouldSkipInstallingPage == "true"
+            Abort
+        ${EndIf}
+        
+        nsDialogs::Create 1018
+        Pop $Dialog
+
+        ${If} $Dialog == error
+            Abort
+        ${EndIf}
+        
+        ${NSD_CreateLabel} 0 0 100% 14u "High Fidelity is installing in the background..."
+        Pop $Label
+
+        ${NSD_CreateProgressBar} 0 16 100% 10% ""
+        Pop $ProgressBar
+        ${NSD_AddStyle} $ProgressBar ${PBS_MARQUEE}
+        SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N
+        
+        ${NSD_CreateTimer} CheckInstallComplete 100
+        
+        nsDialogs::Show
     FunctionEnd
 ;--------------------------------
 ; END Step 1
@@ -349,7 +408,9 @@
             ;MessageBox MB_OK "Custom content NOT found!"
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
-            Call LaunchInterface
+            ${If} $HadToInstallInterface == "false"
+                Call LaunchInterface
+            ${EndIf}
     FunctionEnd
 ;--------------------------------
 ; END Step 2
