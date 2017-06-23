@@ -478,7 +478,7 @@
             nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
             Pop $R0
             StrCmp $R0 "success" EventSpecificContent_finish
-                MessageBox MB_OK "Cuntent set uncompression failed with status: $R0. Please try running this installer again."
+                MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
     FunctionEnd
