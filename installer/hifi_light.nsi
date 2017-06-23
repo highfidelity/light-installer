@@ -223,14 +223,14 @@
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
-    ;;!define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6755.exe"
-    !define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
+    ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
     ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
     ;;  2. make sure that some older NON-PR build is already installed (such as an older release). This puts an entry in the registry so we don't fail when checking.
     ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
-    !define PR_BUILD_DIRECTORY "High Fidelity - PR10794"
+    !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
 
     ; Request Administrator privileges for Windows Vista and higher
