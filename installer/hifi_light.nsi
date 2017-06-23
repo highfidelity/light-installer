@@ -259,6 +259,7 @@ Page custom HiFiInstallingPage
 ; START Installer Sections
 ;--------------------------------    
     Section "Interface" Interface
+        Call SetupVars
         Call MakeSureHiFiInstalled
     SectionEnd
 ;--------------------------------
@@ -281,6 +282,12 @@ Page custom HiFiInstallingPage
     Var StrContainsResult
     Var ShouldSkipInstallingPage
     Var HadToInstallInterface
+    Var HiFiInstalled
+    Function SetupVars
+        StrCpy $ShouldSkipInstallingPage "true"
+        StrCpy $HadToInstallInterface "false"
+        StrCpy $HiFiInstalled "false"
+    FunctionEnd
     Function GetInterfacePath
         ; Try getting the location of Interface.exe into InterfacePath by checking
         ;     the path associated with 'hifi://' URLs or its icon
@@ -291,8 +298,6 @@ Page custom HiFiInstallingPage
         ${EndIf}
     FunctionEnd
     Function MakeSureHiFiInstalled
-        StrCpy $ShouldSkipInstallingPage "true"
-        StrCpy $HadToInstallInterface "false"
         Call GetInterfacePath
         ${If} $InterfacePath != ""
             ; Make sure the file actually exists in the filesystem
@@ -312,8 +317,11 @@ Page custom HiFiInstallingPage
                 FileClose $FileHandle
                 ${If} $InterfaceVersion == "${HIFI_PROTOCOL_VERSION}"
                     ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
-                    ${nsProcess::Unload}
-                    Call EventSpecificContent
+                    StrCpy $HiFiInstalled "true"
+                    ${If} $HadToInstallInterface == "false"
+                        ${nsProcess::Unload}
+                        Call EventSpecificContent
+                    ${EndIf}
                 ${Else}
                     ;MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
                     ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
@@ -328,19 +336,21 @@ Page custom HiFiInstallingPage
                 Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
-                StrCpy $DownloadedFileName "hifi_installer.exe"
-                StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
-                NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
-                Pop $R0 ; Get the download process return value
-                StrCmp $R0 "success" +3
-                    MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
-                    Quit
-                StrCpy $ShouldSkipInstallingPage "false"
-                StrCpy $HadToInstallInterface "true"
-                ;Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
-                ; Modified command for use when testing with downloaded "test.exe"
-                Exec '"$DownloadedFilePath"'
+                ${If} $HadToInstallInterface == "false"
+                    ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
+                    StrCpy $DownloadedFileName "hifi_installer.exe"
+                    StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
+                    NSISdl::download "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
+                    Pop $R0 ; Get the download process return value
+                    StrCmp $R0 "success" +3
+                        MessageBox MB_OK "Download failed with status: $R0. Press OK to quit this installer."
+                        Quit
+                    StrCpy $ShouldSkipInstallingPage "false"
+                    StrCpy $HadToInstallInterface "true"
+                    ;Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
+                    ; Modified command for use when testing with downloaded "test.exe"
+                    Exec '"$DownloadedFilePath"'
+                ${EndIf}
         ${EndIf}
     FunctionEnd
     
@@ -356,13 +366,19 @@ Page custom HiFiInstallingPage
             
             Call MakeSureHiFiInstalled
             
-            SendMessage $Label ${WM_SETTEXT} "" "STR:Downloading content for Project Jaws..."
-            Call EventSpecificContent
             ShowWindow $ProgressBar ${SW_HIDE}
             ${NSD_CreateProgressBar} 0 16 100% 10% ""
             Pop $ProgressBar
-            SendMessage $ProgressBar ${PBM_SETPOS} 100 0
-            SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
+            ${If} $HiFiInstalled == "false"
+                SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity failed to install. Please rerun this installer."
+                SendMessage $ProgressBar ${PBM_SETPOS} 100 0
+                SendMessage $ProgressBar ${PBM_SETSTATE} ${PBST_ERROR} 0
+            ${Else}
+                SendMessage $Label ${WM_SETTEXT} "" "STR:Downloading content for Project Jaws..."
+                Call EventSpecificContent
+                SendMessage $ProgressBar ${PBM_SETPOS} 100 0
+                SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
+            ${EndIf}
         ${EndIf}
     FunctionEnd    
     Function HiFiInstallingPage
@@ -421,10 +437,12 @@ Page custom HiFiInstallingPage
 ; Launch Interface with command-line arguments
 ;--------------------------------
     Function LaunchInterface
-        ; Make sure that no High Fidelity application is already running
-        !insertmacro CheckForRunningApplications
-        Call GetInterfacePath ;; In case it changed during installation of a new version
-        Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial'
+        ${If} $HiFiInstalled == "true"
+            ; Make sure that no High Fidelity application is already running
+            !insertmacro CheckForRunningApplications
+            Call GetInterfacePath ;; In case it changed during installation of a new version
+            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial'
+        ${EndIf}
         Quit
     FunctionEnd
 ;--------------------------------
