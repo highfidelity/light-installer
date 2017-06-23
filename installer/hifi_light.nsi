@@ -228,7 +228,7 @@
     !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
-    ;;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
+    ;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
     ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
@@ -250,11 +250,6 @@
 !insertmacro MUI_PAGE_INSTFILES
 !define MUI_TEXT_INSTALLING_TITLE "High Fidelity - Event Installer"
 !define MUI_TEXT_INSTALLING_SUBTITLE " "
-Page custom HiFiInstallingPage
-!define MUI_PAGE_CUSTOMFUNCTION_PRE LaunchInterface
-!define MUI_TEXT_FINISH_TITLE "High Fidelity - Event Installer"
-!define MUI_TEXT_FINISH_SUBTITLE " "
-!insertmacro MUI_PAGE_FINISH
 !insertmacro MUI_LANGUAGE "English"
 ;--------------------------------
 ; END Installer Sections
@@ -263,20 +258,30 @@ Page custom HiFiInstallingPage
 ;--------------------------------
 ; START Installer Sections
 ;--------------------------------    
-    Section "Interface" Interface
-        Call SetupVars
-        Call MakeSureHiFiInstalled
+    Section "LightInstaller" LightInstaller
+        Call MaybeDownloadHiFi
+        Call MaybeDownloadContent
+        Call MaybeInstallHiFi
+        Call LaunchInterface
     SectionEnd
 ;--------------------------------
 ; END Installer Sections
 ;--------------------------------
 
-Function .onInit
-	InitPluginsDir
-	File /oname=$PLUGINSDIR\hifi1.bmp "images\hifi1.bmp"
-	File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
-	File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
-FunctionEnd
+    Var MustInstallHiFi
+    Var HiFiInstalled
+    Function SetupVars
+        StrCpy $MustInstallHiFi "false"
+        StrCpy $HiFiInstalled "false"
+    FunctionEnd
+
+    Function .onInit
+        InitPluginsDir
+        File /oname=$PLUGINSDIR\hifi1.bmp "images\hifi1.bmp"
+        File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
+        File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
+        Call SetupVars
+    FunctionEnd
   
 ;--------------------------------
 ; START Step 1:
@@ -289,17 +294,9 @@ FunctionEnd
     Var InterfacePath
     Var InterfaceVersion
     Var FileHandle
-    Var DownloadedFilePath
-    Var DownloadedFileName
+    Var DownloadedFilePath_Interface
+    Var DownloadedFileName_Interface
     Var StrContainsResult
-    Var ShouldSkipInstallingPage
-    Var HadToInstallInterface
-    Var HiFiInstalled
-    Function SetupVars
-        StrCpy $ShouldSkipInstallingPage "true"
-        StrCpy $HadToInstallInterface "false"
-        StrCpy $HiFiInstalled "false"
-    FunctionEnd
     Function GetInterfacePath
         ; Try getting the location of Interface.exe into InterfacePath by checking
         ;     the path associated with 'hifi://' URLs or its icon
@@ -309,7 +306,7 @@ FunctionEnd
           ${StrRep} '$InterfacePath' '$InterfacePath' 'High Fidelity' "${PR_BUILD_DIRECTORY}"
         ${EndIf}
     FunctionEnd
-    Function MakeSureHiFiInstalled
+    Function CheckIfHifiInstalled
         Call GetInterfacePath
         ${If} $InterfacePath != ""
             ; Make sure the file actually exists in the filesystem
@@ -321,7 +318,7 @@ FunctionEnd
                 !insertmacro CheckForRunningApplications
                 ; 2: Run Interface.exe with --protocolVersion argument.
                 GetFunctionAddress $R0 InterfaceTimerExpired
-                ThreadTimer::Start 3000 1 $R0 ; Uses ThreadTimer plugin
+                ThreadTimer::Start 5000 1 $R0 ; Uses ThreadTimer plugin
                 ExecWait '"$InterfacePath" --suppress-settings-reset --protocolVersion $TEMP\version.txt'
                 ThreadTimer::Stop
                 FileOpen $FileHandle "$TEMP\version.txt" r
@@ -330,10 +327,6 @@ FunctionEnd
                 ${If} $InterfaceVersion == "${HIFI_PROTOCOL_VERSION}"
                     ;MessageBox MB_OK "$InterfacePath Interface Version $InterfaceVersion is correct!"
                     StrCpy $HiFiInstalled "true"
-                    ${If} $HadToInstallInterface == "false"
-                        ${nsProcess::Unload}
-                        Call EventSpecificContent
-                    ${EndIf}
                 ${Else}
                     ;MessageBox MB_OK "Found protocol $InterfaceVersion does not match expected ${HIFI_PROTOCOL_VERSION}"
                     ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
@@ -348,21 +341,21 @@ FunctionEnd
                 Delete "$TEMP\version.txt"
         ${Else}
             interface_not_found: ; We need to (download and install) High Fidelity Interface
-                ${If} $HadToInstallInterface == "false"
-                    ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
-                    StrCpy $DownloadedFileName "hifi_installer.exe"
-                    StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
-                    inetc::get "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath
-                    Pop $R0 ; Get the download process return value
-                    StrCmp $R0 "OK" +3
-                        MessageBox MB_OK "Download failed with status: $R0. Please try running this installer again."
-                        Quit
-                    StrCpy $ShouldSkipInstallingPage "false"
-                    StrCpy $HadToInstallInterface "true"
-                    Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
-                    ; Modified command for use when testing/debugging with downloaded "test.exe"
-                    ;Exec '"$DownloadedFilePath"'
-                ${EndIf}
+                StrCpy $MustInstallHiFi "true"
+        ${EndIf}
+    FunctionEnd
+    
+    Function MaybeDownloadHiFi
+        Call CheckIfHifiInstalled
+        ${If} $MustInstallHiFi == "true"
+            ;MessageBox MB_OK "High Fidelity needs to be downloaded and installed. Old path: $InterfacePath. Old protocol: $InterfaceVersion. Expected protocol: ${HIFI_PROTOCOL_VERSION}"
+            StrCpy $DownloadedFileName_Interface "hifi_installer.exe"
+            StrCpy $DownloadedFilePath_Interface "$TEMP\$DownloadedFileName_Interface"
+            inetc::get "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath_Interface
+            Pop $R0 ; Get the download process return value
+            StrCmp $R0 "OK" +3
+                MessageBox MB_OK "High Fidelity Interface download failed with status: $R0. Please try running this installer again."
+                Quit
         ${EndIf}
     FunctionEnd
     
@@ -372,14 +365,13 @@ FunctionEnd
     Var ProgressBar
     Var Image
     Var ImageHandle
-    Var ContentSilentDownload
     !define PBS_MARQUEE 0x08
     Function CheckInstallComplete
-        ${nsProcess::FindProcess} "$DownloadedFileName" $InstallerProcessStatus
+        ${nsProcess::FindProcess} "$DownloadedFileName_Interface" $InstallerProcessStatus
         ${If} $InstallerProcessStatus != "0"
             ${NSD_KillTimer} CheckInstallComplete
             
-            Call MakeSureHiFiInstalled
+            Call CheckIfHifiInstalled
             
             ${If} $HiFiInstalled == "false"
                 SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity failed to install. Please rerun this installer."
@@ -389,17 +381,16 @@ FunctionEnd
                 SendMessage $ProgressBar ${PBM_SETPOS} 100 0
                 SendMessage $ProgressBar ${PBM_SETSTATE} ${PBST_ERROR} 0
             ${Else}
-                StrCpy $ContentSilentDownload "true"
-                SendMessage $Label ${WM_SETTEXT} "" "STR:Downloading content for Project Jaws..."
-                Call EventSpecificContent
                 ShowWindow $ProgressBar ${SW_HIDE}
                 ${NSD_CreateProgressBar} 0 16 100% 24 ""
                 Pop $ProgressBar
                 SendMessage $ProgressBar ${PBM_SETPOS} 100 0
-                SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
-                ; Enable "Next" button
-                GetDlgItem $0 $HWNDPARENT 1
-                EnableWindow $0 1
+                SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing!"
+                ; Change "Cancel" button to read "Finish" so that the installer can actually quit
+                ;     when the user presses this button.
+                GetDlgItem $R0 $HWNDPARENT 2
+                SendMessage $R0 ${WM_SETTEXT} 0 "STR:Finish"
+                Call LaunchInterface
             ${EndIf}
         ${EndIf}
     FunctionEnd
@@ -413,44 +404,47 @@ FunctionEnd
             StrCpy $NextImageNumber 1
         ${EndIf}
     FunctionEnd
-    Function HiFiInstallingPage
-        ${If} $ShouldSkipInstallingPage == "true"
-            Abort
-        ${EndIf}
-        
-        StrCpy $NextImageNumber "1"
-        StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
-        
-        nsDialogs::Create 1018
-        Pop $Dialog
+    Function MaybeInstallHiFi        
+        ${If} $MustInstallHiFi == "true"
+            Exec '"$DownloadedFilePath_Interface" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
+            ; Modified command for use when testing/debugging with downloaded "test.exe"
+            ;Exec '"$DownloadedFilePath_Interface"'
+            
+            StrCpy $NextImageNumber "1"
+            StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
+            
+            nsDialogs::Create 1018
+            Pop $Dialog
 
-        ${If} $Dialog == error
-            Abort
-        ${EndIf}
-        
-        ${NSD_CreateLabel} 0 0 100% 14u "High Fidelity is installing in the background..."
-        Pop $Label
+            ${If} $Dialog == error
+                Abort
+            ${EndIf}
+            
+            ${NSD_CreateLabel} 0 0 100% 14u "High Fidelity is installing in the background..."
+            Pop $Label
 
-        ${NSD_CreateProgressBar} 0 16 100% 24 ""
-        Pop $ProgressBar
-        ${NSD_AddStyle} $ProgressBar ${PBS_MARQUEE}
-        SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N	
-        
-        ; Images should be 440*180px
-        ${NSD_CreateBitmap} 0 46 100% 100% ""
-        Pop $Image
-        ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
-        IntOp $NextImageNumber $NextImageNumber + 1
-        
-        ${NSD_CreateTimer} CheckInstallComplete 100
-        ${NSD_CreateTimer} ChangeImage 2500
-        
-        ; Disable "Next" button
-        GetDlgItem $0 $HWNDPARENT 1
-        EnableWindow $0 0
-        
-        nsDialogs::Show
-        ${NSD_FreeImage} $ImageHandle
+            ${NSD_CreateProgressBar} 0 16 100% 24 ""
+            Pop $ProgressBar
+            ${NSD_AddStyle} $ProgressBar ${PBS_MARQUEE}
+            SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N	
+            
+            ; Images should be 440*180px
+            ${NSD_CreateBitmap} 0 46 100% 100% ""
+            Pop $Image
+            ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
+            IntOp $NextImageNumber $NextImageNumber + 1
+            
+            ${NSD_CreateTimer} CheckInstallComplete 100
+            ${NSD_CreateTimer} ChangeImage 2500
+            
+            ; Enable "Close" button
+            ;GetDlgItem $0 $HWNDPARENT 1
+            ;EnableWindow $0 1
+            EnableWindow $mui.Button.Cancel 1
+            
+            nsDialogs::Show
+            ${NSD_FreeImage} $ImageHandle
+        ${EndIf}
     FunctionEnd
 ;--------------------------------
 ; END Step 1
@@ -461,7 +455,9 @@ FunctionEnd
 ; If needed, add custom, pre-defined content to user's filesystem
 ;--------------------------------
     Var ContentId
-    Function EventSpecificContent
+    Var DownloadedFileName_Content
+    Var DownloadedFilePath_Content
+    Function MaybeDownloadContent
         StrCpy $ContentId "CONTENT_ID_GOES_HERE"
         IfFileExists "$AppData\Local\High Fidelity\$ContentId\*.*" content_found content_not_found
         content_found:
@@ -469,22 +465,15 @@ FunctionEnd
             Goto EventSpecificContent_finish
         content_not_found:
             ;MessageBox MB_OK "Custom content NOT found!"
-            StrCpy $DownloadedFileName "hifi_content.zip"
-            StrCpy $DownloadedFilePath "$TEMP\$DownloadedFileName"
-            ${If} $ContentSilentDownload == "true"
-                inetc::get /SILENT "${HIFI_CONTENT_URL}" $DownloadedFilePath
-            ${Else}
-                inetc::get "${HIFI_CONTENT_URL}" $DownloadedFilePath
-            ${EndIf}
+            StrCpy $DownloadedFileName_Content "hifi_content.zip"
+            StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
+            inetc::get "${HIFI_CONTENT_URL}" $DownloadedFilePath_Content
             Pop $R0 ; Get the download process return value
             StrCmp $R0 "OK" +3
-                MessageBox MB_OK "Download failed with status: $R0. Please try running this installer again."
+                MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
                 Quit
             Goto EventSpecificContent_finish
         EventSpecificContent_finish:
-            ${If} $HadToInstallInterface == "false"
-                Call LaunchInterface
-            ${EndIf}
     FunctionEnd
 ;--------------------------------
 ; END Step 2
@@ -495,6 +484,7 @@ FunctionEnd
 ; Launch Interface with command-line arguments
 ;--------------------------------
     Function LaunchInterface
+        ;MessageBox MB_OK "$HiFiInstalled"
         ${If} $HiFiInstalled == "true"
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
