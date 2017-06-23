@@ -225,10 +225,10 @@
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
-    ;;!define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6765.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing.
-    !define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
+    ;;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
     ;; If the above is any release or dev-download build, the following should be an empty string.
     ;; However, if you need to use a PR build during development:
     ;;  1. let this be "High Fidleity - PRxxxxx" (with whatever actual number), and
@@ -347,9 +347,9 @@ Page custom HiFiInstallingPage
                         Quit
                     StrCpy $ShouldSkipInstallingPage "false"
                     StrCpy $HadToInstallInterface "true"
-                    ;Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
+                    Exec '"$DownloadedFilePath" /nSandboxIfNew /S /forceNoLaunchClient /forceNoLaunchServer'
                     ; Modified command for use when testing with downloaded "test.exe"
-                    Exec '"$DownloadedFilePath"'
+                    ;Exec '"$DownloadedFilePath"'
                 ${EndIf}
         ${EndIf}
     FunctionEnd
@@ -378,6 +378,9 @@ Page custom HiFiInstallingPage
                 Call EventSpecificContent
                 SendMessage $ProgressBar ${PBM_SETPOS} 100 0
                 SendMessage $Label ${WM_SETTEXT} "" "STR:High Fidelity has finished installing! Press Next to launch."
+                ; Enable "Next" button
+                GetDlgItem $0 $HWNDPARENT 1
+                EnableWindow $0 1
             ${EndIf}
         ${EndIf}
     FunctionEnd    
@@ -402,6 +405,10 @@ Page custom HiFiInstallingPage
         SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N
         
         ${NSD_CreateTimer} CheckInstallComplete 100
+        
+        ; Disable "Next" button
+        GetDlgItem $0 $HWNDPARENT 1
+        EnableWindow $0 0
         
         nsDialogs::Show
     FunctionEnd
