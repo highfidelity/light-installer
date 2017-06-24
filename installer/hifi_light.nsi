@@ -498,6 +498,7 @@
             Call GetInterfacePath ;; In case it changed during installation of a new version
             Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         ${EndIf}
+        SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
         Quit
     FunctionEnd
 ;--------------------------------
