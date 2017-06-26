@@ -215,14 +215,19 @@
 
 ;--------------------------------
 ; START General
-;--------------------------------
+;--------------------------------    
+    ; Event Name
+    !define EVENT_NAME "Jaws"
+    !define INSTALLER_APPLICATION_NAME "High Fidelity ${EVENT_NAME} Event"
+    
     ; Installer application name
-    Name "High Fidelity Jaws Event"
+    Name "${INSTALLER_APPLICATION_NAME}"
 
     ; Installer filename
-    OutFile "High_Fidelity_Jaws_Event.exe"
+    !define EXE_NAME "${INSTALLER_APPLICATION_NAME}.exe"
+    OutFile "${EXE_NAME}"
 
-    !define MUI_ICON "icons\interface.ico"
+    !define MUI_ICON "icons\jaws.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
@@ -283,6 +288,12 @@
         File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
         File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
         Call SetupVars
+        
+        CreateDirectory "$AppData\High Fidelity\${EVENT_NAME}"
+        CopyFiles "$ExePath" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}"
+        CreateShortCut "$DESKTOP\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" ""
+        CreateDirectory "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}"
+        CreateShortCut "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" "" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" 0
     FunctionEnd
   
 ;--------------------------------
