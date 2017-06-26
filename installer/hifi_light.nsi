@@ -215,18 +215,23 @@
 
 ;--------------------------------
 ; START General
-;--------------------------------
+;--------------------------------    
+    ; Event Name
+    !define EVENT_NAME "Jaws"
+    !define INSTALLER_APPLICATION_NAME "High Fidelity ${EVENT_NAME} Event"
+    
     ; Installer application name
-    Name "High Fidelity Jaws Event"
+    Name "${INSTALLER_APPLICATION_NAME}"
 
     ; Installer filename
-    OutFile "High_Fidelity_Jaws_Event.exe"
+    !define EXE_NAME "${INSTALLER_APPLICATION_NAME}.exe"
+    OutFile "${EXE_NAME}"
 
-    !define MUI_ICON "icons\interface.ico"
+    !define MUI_ICON "icons\jaws.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
-    !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
-    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6768.exe"
+    !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6782.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
     ;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
@@ -283,11 +288,17 @@
         File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
         File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
         Call SetupVars
+        
+        CreateDirectory "$AppData\High Fidelity\${EVENT_NAME}"
+        CopyFiles "$ExePath" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}"
+        CreateShortCut "$DESKTOP\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" ""
+        CreateDirectory "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}"
+        CreateShortCut "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" "" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" 0
     FunctionEnd
   
 ;--------------------------------
-; START Step 1:
-; If needed, install High Fidelity Interface
+; START Step 1: MaybeDownloadHiFi
+; If needed, download High Fidelity Interface
 ;--------------------------------
     Function InterfaceTimerExpired
         ${nsProcess::KillProcess} "interface.exe" $R0
@@ -339,7 +350,12 @@
                             ;MessageBox MB_OK "$InterfacePath Installation Portal is NOT STEAM. Interface Version $InterfaceVersion is incorrect."
                                 Goto interface_not_found
                     installed_from_steam:
-                        MessageBox MB_OK "$InterfacePath Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
+                        MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+                        "You have an old version of High Fidelity installed through Steam.$\r$\nPlease update High Fidelity through Steam, then press Retry.$\r$\nTo quit this installer, press Cancel.$\r$\n$\r$\nNOTE: During debugging, while the Steam version of HiFi is out-of-date, you will get stuck here, as no version of HiFi is up-to-date enough to work with this installer." \
+                        /SD IDCANCEL IDRETRY +3 IDCANCEL 0
+                        ${nsProcess::Unload}
+                        Quit
+                        Call CheckIfHifiInstalled
                 ${EndIf}
                 Delete "$TEMP\version.txt"
         ${Else}
@@ -356,12 +372,54 @@
             StrCpy $DownloadedFilePath_Interface "$TEMP\$DownloadedFileName_Interface"
             inetc::get "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath_Interface
             Pop $R0 ; Get the download process return value
-            StrCmp $R0 "OK" +3
+            StrCmp $R0 "OK" +4
                 MessageBox MB_OK "High Fidelity Interface download failed with status: $R0. Please try running this installer again."
+                ${nsProcess::Unload}
                 Quit
         ${EndIf}
     FunctionEnd
+;--------------------------------
+; END Step 1
+;--------------------------------
+  
+;--------------------------------
+; START Step 2: MaybeDownloadContent
+; If needed, add custom, pre-defined content to user's filesystem
+;--------------------------------
+    Var DownloadedFileName_Content
+    Var DownloadedFilePath_Content
+    Function MaybeDownloadContent
+        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
+        ;MessageBox MB_OK "Check content set at $ContentPath"
+        IfFileExists "$ContentPath" content_found content_not_found
+        content_found:
+            ;MessageBox MB_OK "Custom content found!"
+            Goto EventSpecificContent_finish
+        content_not_found:
+            ;MessageBox MB_OK "Custom content NOT found! Downloading from ${CONTENT_SET} to $TEMP\hifi_content.zip"
+            StrCpy $DownloadedFileName_Content "hifi_content.zip"
+            StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
+            inetc::get "${CONTENT_SET}" $DownloadedFilePath_Content
+            Pop $R0 ; Get the download process return value
+            StrCmp $R0 "OK" +4
+                MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
+                ${nsProcess::Unload}
+                Quit
+            nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
+            Pop $R0
+            StrCmp $R0 "success" EventSpecificContent_finish
+                MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
+            Goto EventSpecificContent_finish
+        EventSpecificContent_finish:
+    FunctionEnd
+;--------------------------------
+; END Step 2
+;--------------------------------
     
+;--------------------------------
+; START Step 3: MaybeInstallHiFi
+; If needed, install High Fidelity
+;--------------------------------
     Var InstallerProcessStatus
     Var Dialog
     Var Label
@@ -373,6 +431,7 @@
         ${nsProcess::FindProcess} "$DownloadedFileName_Interface" $InstallerProcessStatus
         ${If} $InstallerProcessStatus != "0"
             ${NSD_KillTimer} CheckInstallComplete
+            ${NSD_KillTimer} ChangeImage
             
             Call CheckIfHifiInstalled
             
@@ -450,44 +509,11 @@
         ${EndIf}
     FunctionEnd
 ;--------------------------------
-; END Step 1
+; END Step 3
 ;--------------------------------
   
 ;--------------------------------
-; START Step 2:
-; If needed, add custom, pre-defined content to user's filesystem
-;--------------------------------
-    Var DownloadedFileName_Content
-    Var DownloadedFilePath_Content
-    Function MaybeDownloadContent
-        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
-        ;MessageBox MB_OK "Check content set at $ContentPath"
-        IfFileExists "$ContentPath" content_found content_not_found
-        content_found:
-            ;MessageBox MB_OK "Custom content found!"
-            Goto EventSpecificContent_finish
-        content_not_found:
-            ;MessageBox MB_OK "Custom content NOT found! Downloading from ${CONTENT_SET} to $TEMP\hifi_content.zip"
-            StrCpy $DownloadedFileName_Content "hifi_content.zip"
-            StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
-            inetc::get "${CONTENT_SET}" $DownloadedFilePath_Content
-            Pop $R0 ; Get the download process return value
-            StrCmp $R0 "OK" +3
-                MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
-                Quit
-            nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
-            Pop $R0
-            StrCmp $R0 "success" EventSpecificContent_finish
-                MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
-            Goto EventSpecificContent_finish
-        EventSpecificContent_finish:
-    FunctionEnd
-;--------------------------------
-; END Step 2
-;--------------------------------
-  
-;--------------------------------
-; START Step 3:
+; START Step 4:
 ; Launch Interface with command-line arguments
 ;--------------------------------
     Function LaunchInterface
@@ -496,11 +522,12 @@
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         ${EndIf}
+        ${nsProcess::Unload}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
         Quit
     FunctionEnd
 ;--------------------------------
-; END Step 3
+; END Step 4
 ;--------------------------------
