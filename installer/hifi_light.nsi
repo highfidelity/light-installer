@@ -339,7 +339,11 @@
                             ;MessageBox MB_OK "$InterfacePath Installation Portal is NOT STEAM. Interface Version $InterfaceVersion is incorrect."
                                 Goto interface_not_found
                     installed_from_steam:
-                        MessageBox MB_OK "$InterfacePath Installation Portal is STEAM. Steam will update High Fidelity the next time it starts."
+                        MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
+                        "You have an old version of High Fidelity installed through Steam.$\r$\nPlease update High Fidelity through Steam, then press Retry.$\r$\nTo quit this installer, press Cancel." \
+                        /SD IDCANCEL IDRETRY +2 IDCANCEL 0
+                        Quit
+                        Call CheckIfHifiInstalled
                 ${EndIf}
                 Delete "$TEMP\version.txt"
         ${Else}
@@ -496,7 +500,7 @@
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         ${EndIf}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
         Quit
