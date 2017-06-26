@@ -230,7 +230,7 @@
     !define MUI_ICON "icons\jaws.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
-    !define HIFI_PROTOCOL_VERSION "wZvQKLWfxkPibrBrFztVYA=="
+    !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
     !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6782.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
