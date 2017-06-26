@@ -352,7 +352,8 @@
                     installed_from_steam:
                         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
                         "You have an old version of High Fidelity installed through Steam.$\r$\nPlease update High Fidelity through Steam, then press Retry.$\r$\nTo quit this installer, press Cancel.$\r$\n$\r$\nNOTE: During debugging, while the Steam version of HiFi is out-of-date, you will get stuck here, as no version of HiFi is up-to-date enough to work with this installer." \
-                        /SD IDCANCEL IDRETRY +2 IDCANCEL 0
+                        /SD IDCANCEL IDRETRY +3 IDCANCEL 0
+                        ${nsProcess::Unload}
                         Quit
                         Call CheckIfHifiInstalled
                 ${EndIf}
@@ -371,8 +372,9 @@
             StrCpy $DownloadedFilePath_Interface "$TEMP\$DownloadedFileName_Interface"
             inetc::get "${HIFI_MAIN_INSTALLER_URL}" $DownloadedFilePath_Interface
             Pop $R0 ; Get the download process return value
-            StrCmp $R0 "OK" +3
+            StrCmp $R0 "OK" +4
                 MessageBox MB_OK "High Fidelity Interface download failed with status: $R0. Please try running this installer again."
+                ${nsProcess::Unload}
                 Quit
         ${EndIf}
     FunctionEnd
@@ -399,8 +401,9 @@
             StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
             inetc::get "${CONTENT_SET}" $DownloadedFilePath_Content
             Pop $R0 ; Get the download process return value
-            StrCmp $R0 "OK" +3
+            StrCmp $R0 "OK" +4
                 MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
+                ${nsProcess::Unload}
                 Quit
             nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
             Pop $R0
@@ -521,6 +524,7 @@
             Call GetInterfacePath ;; In case it changed during installation of a new version
             Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         ${EndIf}
+        ${nsProcess::Unload}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
         Quit
     FunctionEnd
