@@ -490,13 +490,24 @@
 ; START Step 3:
 ; Launch Interface with command-line arguments
 ;--------------------------------
+    Var CommandLineArgs
     Function LaunchInterface
         ;MessageBox MB_OK "$HiFiInstalled"
+        StrCpy $CommandLineArgs '--url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
         ${If} $HiFiInstalled == "true"
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+            ${StrContains} $StrContainsResult "steamapps" $InterfacePath ; Double-check Interface.exe isn't a Steam version by checking the EXE path
+            StrCmp $StrContainsResult "" launch_from_exe
+                Goto launch_from_steam
+                launch_from_exe:
+                    Exec '"$InterfacePath" $CommandLineArgs'
+                    Goto launch_finish
+                launch_from_steam:
+                    ExecShell "" 'steam://rungameid/390540// $CommandLineArgs'
+                    Goto launch_finish
+                launch_finish:
         ${EndIf}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
         Quit
