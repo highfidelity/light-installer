@@ -5,7 +5,8 @@ A light installer for High Fidelity VR. Built using NSIS.
 - [NSIS 3.01](http://nsis.sourceforge.net/Download)
 - [NSIS NsProcess Plugin](http://nsis.sourceforge.net/NsProcess_plugin)
 - [NSIS ThreadTimer Plugin](http://nsis.sourceforge.net/ThreadTimer_plug-in)
-- [NSIS Nsisunz Plugin] (http://nsis.sourceforge.net/Nsisunz_plug-in)
+- [NSIS Nsisunz Plugin](http://nsis.sourceforge.net/Nsisunz_plug-in)
+- [NSIS Inetc Plugin](http://nsis.sourceforge.net/Inetc_plug-in)
 
 ## Current "High Fidelity Express" Installer Flow
 _This section of the README is current as of **2017-06-22 05:00 PM PDT**. It'll be updated as the installer logic matures._
