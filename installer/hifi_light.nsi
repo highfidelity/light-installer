@@ -428,6 +428,7 @@
         ${nsProcess::FindProcess} "$DownloadedFileName_Interface" $InstallerProcessStatus
         ${If} $InstallerProcessStatus != "0"
             ${NSD_KillTimer} CheckInstallComplete
+            ${NSD_KillTimer} ChangeImage
             
             Call CheckIfHifiInstalled
             
