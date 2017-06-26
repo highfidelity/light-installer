@@ -340,7 +340,7 @@
                                 Goto interface_not_found
                     installed_from_steam:
                         MessageBox MB_RETRYCANCEL|MB_ICONEXCLAMATION \
-                        "You have an old version of High Fidelity installed through Steam.$\r$\nPlease update High Fidelity through Steam, then press Retry.$\r$\nTo quit this installer, press Cancel." \
+                        "You have an old version of High Fidelity installed through Steam.$\r$\nPlease update High Fidelity through Steam, then press Retry.$\r$\nTo quit this installer, press Cancel.$\r$\n$\r$\nNOTE: During debugging, while the Steam version of HiFi is out-of-date, you will get stuck here, as no version of HiFi is up-to-date enough to work with this installer." \
                         /SD IDCANCEL IDRETRY +2 IDCANCEL 0
                         Quit
                         Call CheckIfHifiInstalled
