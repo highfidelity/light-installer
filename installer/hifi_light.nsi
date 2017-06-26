@@ -297,8 +297,8 @@
     FunctionEnd
   
 ;--------------------------------
-; START Step 1:
-; If needed, install High Fidelity Interface
+; START Step 1: MaybeDownloadHiFi
+; If needed, download High Fidelity Interface
 ;--------------------------------
     Function InterfaceTimerExpired
         ${nsProcess::KillProcess} "interface.exe" $R0
@@ -376,7 +376,47 @@
                 Quit
         ${EndIf}
     FunctionEnd
+;--------------------------------
+; END Step 1
+;--------------------------------
+  
+;--------------------------------
+; START Step 2: MaybeDownloadContent
+; If needed, add custom, pre-defined content to user's filesystem
+;--------------------------------
+    Var DownloadedFileName_Content
+    Var DownloadedFilePath_Content
+    Function MaybeDownloadContent
+        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
+        ;MessageBox MB_OK "Check content set at $ContentPath"
+        IfFileExists "$ContentPath" content_found content_not_found
+        content_found:
+            ;MessageBox MB_OK "Custom content found!"
+            Goto EventSpecificContent_finish
+        content_not_found:
+            ;MessageBox MB_OK "Custom content NOT found! Downloading from ${CONTENT_SET} to $TEMP\hifi_content.zip"
+            StrCpy $DownloadedFileName_Content "hifi_content.zip"
+            StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
+            inetc::get "${CONTENT_SET}" $DownloadedFilePath_Content
+            Pop $R0 ; Get the download process return value
+            StrCmp $R0 "OK" +3
+                MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
+                Quit
+            nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
+            Pop $R0
+            StrCmp $R0 "success" EventSpecificContent_finish
+                MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
+            Goto EventSpecificContent_finish
+        EventSpecificContent_finish:
+    FunctionEnd
+;--------------------------------
+; END Step 2
+;--------------------------------
     
+;--------------------------------
+; START Step 3: MaybeInstallHiFi
+; If needed, install High Fidelity
+;--------------------------------
     Var InstallerProcessStatus
     Var Dialog
     Var Label
@@ -465,44 +505,11 @@
         ${EndIf}
     FunctionEnd
 ;--------------------------------
-; END Step 1
+; END Step 3
 ;--------------------------------
   
 ;--------------------------------
-; START Step 2:
-; If needed, add custom, pre-defined content to user's filesystem
-;--------------------------------
-    Var DownloadedFileName_Content
-    Var DownloadedFilePath_Content
-    Function MaybeDownloadContent
-        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
-        ;MessageBox MB_OK "Check content set at $ContentPath"
-        IfFileExists "$ContentPath" content_found content_not_found
-        content_found:
-            ;MessageBox MB_OK "Custom content found!"
-            Goto EventSpecificContent_finish
-        content_not_found:
-            ;MessageBox MB_OK "Custom content NOT found! Downloading from ${CONTENT_SET} to $TEMP\hifi_content.zip"
-            StrCpy $DownloadedFileName_Content "hifi_content.zip"
-            StrCpy $DownloadedFilePath_Content "$TEMP\$DownloadedFileName_Content"
-            inetc::get "${CONTENT_SET}" $DownloadedFilePath_Content
-            Pop $R0 ; Get the download process return value
-            StrCmp $R0 "OK" +3
-                MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
-                Quit
-            nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
-            Pop $R0
-            StrCmp $R0 "success" EventSpecificContent_finish
-                MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
-            Goto EventSpecificContent_finish
-        EventSpecificContent_finish:
-    FunctionEnd
-;--------------------------------
-; END Step 2
-;--------------------------------
-  
-;--------------------------------
-; START Step 3:
+; START Step 4:
 ; Launch Interface with command-line arguments
 ;--------------------------------
     Function LaunchInterface
@@ -517,5 +524,5 @@
         Quit
     FunctionEnd
 ;--------------------------------
-; END Step 3
+; END Step 4
 ;--------------------------------
