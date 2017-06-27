@@ -245,7 +245,7 @@
     !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
     !define CONTENT_ID "jaws-1"
-    !define CONTENT_SET "https://hifi-content.s3.amazonaws.com/howard/zaru-content-custom-scripts.zip"
+    !define CONTENT_SET "http://cdn.highfidelity.com/content-sets/zaru-content-custom-scripts.zip"
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
