@@ -21,6 +21,8 @@
     !include "LogicLib.nsh"
     !include "nsDialogs.nsh"
     !include "WinMessages.nsh"
+    !include "TextFunc.nsh"
+    !include "WordFunc.nsh"
 ;--------------------------------
 ; END Includes
 ;--------------------------------
@@ -516,13 +518,29 @@
 ; START Step 4:
 ; Launch Interface with command-line arguments
 ;--------------------------------
+    Var InterfaceCommandArgs
+    
+    Var MorphAvatarFile
     Function LaunchInterface
         ;MessageBox MB_OK "$HiFiInstalled"
         ${If} $HiFiInstalled == "true"
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+
+            ; Demonstrate that we can pick up the beta RR avatar from file.
+            StrCpy $MorphAvatarFile "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
+            IfFileExists "$MorphAvatarFile" ParseRRScript NoRRScript
+            ParseRRScript:
+            ${LineRead} "$MorphAvatarFile" "4" $R0
+            ${WordFind2X} "$R0" 'var rrURL = "' '";' "+1" $R1
+            ${IfNot} $R1 == $R0
+               StrCpy $InterfaceCommandArgs '$InterfaceCommandArgs --avatarURL "$R1"'
+            ${EndIf}
+            NoRRScript:
+            
+            Exec '"$InterfacePath"  $InterfaceCommandArgs'
         ${EndIf}
         ${nsProcess::Unload}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
