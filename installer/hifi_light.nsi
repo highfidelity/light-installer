@@ -246,6 +246,8 @@
     !define EVENT_LOCATION "hifi://dev-playa/event"
     !define CONTENT_ID "jaws-1"
     !define CONTENT_SET "http://cdn.highfidelity.com/content-sets/zaru-content-custom-scripts.zip"
+    !define MORPH_AVATAR_FILE "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
+
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -569,7 +571,6 @@
 ;--------------------------------
     Var InterfaceCommandArgs
     
-    Var MorphAvatarFile
     Function LaunchInterface
         ;MessageBox MB_OK "$HiFiInstalled"
         ${StrContains} $StrContainsResult "/forceNoLaunchClient" $CMDLINE
@@ -581,14 +582,13 @@
             StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial --cache "${ContentPath}\Interface" --scripts "${ContentPath}\Interface\scripts"'
 
             ; Demonstrate that we can pick up the beta RR avatar from file.
-            StrCpy $MorphAvatarFile "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
-            IfFileExists "$MorphAvatarFile" ParseRRScript NoRRScript
+            IfFileExists "${MORPH_AVATAR_FILE}" ParseRRScript NoRRScript
             ParseRRScript:
-            ${LineRead} "$MorphAvatarFile" "4" $R0
-            ${WordFind2X} "$R0" 'var rrURL = "' '";' "+1" $R1
-            ${IfNot} $R1 == $R0
-               StrCpy $InterfaceCommandArgs '$InterfaceCommandArgs --avatarURL "$R1"'
-            ${EndIf}
+                ${LineRead} "${MORPH_AVATAR_FILE}" "4" $R0
+                ${WordFind2X} "$R0" 'var rrURL = "' '";' "+1" $R1
+                ${IfNot} $R1 == $R0
+                    StrCpy $InterfaceCommandArgs '$InterfaceCommandArgs --avatarURL "$R1"'
+                ${EndIf}
             NoRRScript:
             
             Exec '"$InterfacePath"  $InterfaceCommandArgs'
