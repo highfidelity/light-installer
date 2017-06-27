@@ -277,11 +277,56 @@
 ; END Installer Sections
 ;--------------------------------
 
+;--------------------------------
+; START UNInstall Init
+;--------------------------------
+    Function un.onInit
+        MessageBox MB_OKCANCEL "Do you want to remove the files on your computer associated with the High Fidelity ${EVENT_NAME} Event?$\r$\n$\r$\nThis includes event shortcuts and data cache files.$\r$\n$\r$\nThis does NOT include High Fidelity itself." IDOK +2
+            Abort
+    FunctionEnd
+;--------------------------------
+; END UNInstall Init
+;--------------------------------   
+
+;--------------------------------
+; START Install Init
+;--------------------------------    
     Var MustInstallHiFi
     Var HiFiInstalled
     Function SetupVars
         StrCpy $MustInstallHiFi "false"
         StrCpy $HiFiInstalled "false"
+    FunctionEnd
+    
+    ; !defines for "Add/Remove Programs" Details
+    !define APPNAME "${INSTALLER_APPLICATION_NAME}"
+    !define COMPANYNAME "High Fidelity, Inc"
+    !define DESCRIPTION "${INSTALLER_APPLICATION_NAME} Installer Files"
+    !define VERSIONMAJOR 1
+    !define VERSIONMINOR 0
+    !define VERSIONBUILD 0
+    !define HELPURL "http://highfidelity.io" ; "Support Information" link
+    !define UPDATEURL "http://highfidelity.io" ; "Product Updates" link
+    !define ABOUTURL "http://highfidelity.io" ; "Publisher" link
+    !define INSTALLSIZE 1024 ; In kB; just a guess
+    Function SetupUninstaller
+        writeUninstaller "$AppData\High Fidelity\${EVENT_NAME}\Uninstall ${EXE_NAME}"
+        
+    	# Registry information for Add/Remove programs
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "DisplayName" "${APPNAME}"
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "UninstallString" "$\"$AppData\High Fidelity\${EVENT_NAME}\Uninstall ${EXE_NAME}$\""
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "DisplayIcon" "$\"$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}$\""
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "Publisher" "${COMPANYNAME}"
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "HelpLink" "${HELPURL}"
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "URLUpdateInfo" "${UPDATEURL}"
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "URLInfoAbout" "${ABOUTURL}"
+        WriteRegStr HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "DisplayVersion" "${VERSIONMAJOR}.${VERSIONMINOR}.${VERSIONBUILD}"
+        WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "VersionMajor" ${VERSIONMAJOR}
+        WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "VersionMinor" ${VERSIONMINOR}
+        # There is no option for modifying or repairing the install
+        WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "NoModify" 1
+        WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "NoRepair" 1
+        WriteRegDWORD HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}" "EstimatedSize" ${INSTALLSIZE}
     FunctionEnd
 
     Function .onInit
@@ -296,8 +341,13 @@
         CreateShortCut "$DESKTOP\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" ""
         CreateDirectory "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}"
         CreateShortCut "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}\${INSTALLER_APPLICATION_NAME}.lnk" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" "" "$AppData\High Fidelity\${EVENT_NAME}\${EXE_NAME}" 0
+        
+        Call SetupUninstaller
     FunctionEnd
-  
+;--------------------------------
+; END Install Init
+;--------------------------------   
+
 ;--------------------------------
 ; START Step 1: MaybeDownloadHiFi
 ; If needed, download High Fidelity Interface
@@ -312,7 +362,6 @@
     Var DownloadedFilePath_Interface
     Var DownloadedFileName_Interface
     Var StrContainsResult
-    Var ContentPath
     Function GetInterfacePath
         ; Try getting the location of Interface.exe into InterfacePath by checking
         ;     the path associated with 'hifi://' URLs or its icon
@@ -390,10 +439,10 @@
 ;--------------------------------
     Var DownloadedFileName_Content
     Var DownloadedFilePath_Content
+    !define ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
     Function MaybeDownloadContent
-        StrCpy $ContentPath "$AppData\High Fidelity\content-sets\${CONTENT_ID}"
-        ;MessageBox MB_OK "Check content set at $ContentPath"
-        IfFileExists "$ContentPath" content_found content_not_found
+        ;MessageBox MB_OK "Check content set at ${ContentPath}"
+        IfFileExists "${ContentPath}" content_found content_not_found
         content_found:
             ;MessageBox MB_OK "Custom content found!"
             Goto EventSpecificContent_finish
@@ -407,7 +456,7 @@
                 MessageBox MB_OK "Content download failed with status: $R0. Please try running this installer again."
                 ${nsProcess::Unload}
                 Quit
-            nsisunz::Unzip "$DownloadedFilePath_Content" "$ContentPath"
+            nsisunz::Unzip "$DownloadedFilePath_Content" "${ContentPath}"
             Pop $R0
             StrCmp $R0 "success" EventSpecificContent_finish
                 MessageBox MB_OK "Content set decompression failed with status: $R0. Please try running this installer again."
@@ -529,7 +578,7 @@
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}" --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
+            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial --cache "$ContentPath\Interface" --scripts "$ContentPath\Interface\scripts"'
 
             ; Demonstrate that we can pick up the beta RR avatar from file.
             StrCpy $MorphAvatarFile "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
@@ -551,3 +600,31 @@
 ;--------------------------------
 ; END Step 4
 ;--------------------------------
+
+;--------------------------------
+; START UNInstaller Sections
+;--------------------------------    
+    Section "uninstall"
+        ; Make sure Interface is closed first
+        !insertmacro PromptForRunningApplication "interface.exe" "Interface"
+    
+        ; Delete Desktop shortcut
+        Delete "$DESKTOP\${INSTALLER_APPLICATION_NAME}.lnk"
+        ; Remove Start Menu shortcut
+        Delete "$DESKTOP\${INSTALLER_APPLICATION_NAME}.lnk"
+        ; Try to remove the Start Menu folder - this is a recursive RMDir
+        RMDir /r "$SMPROGRAMS\${INSTALLER_APPLICATION_NAME}"
+        
+        ; Delete the event Content Path directory
+        RMDir /r "${ContentPath}"
+        
+        ; Delete the installer's/uninstaller's directory
+        ; Always do this as the _last_ file-related action.
+        RMDir /r "$AppData\High Fidelity\${EVENT_NAME}"
+        
+        ; Remove uninstaller information from the registry
+        DeleteRegKey HKLM "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANYNAME} ${APPNAME}"
+    SectionEnd
+;--------------------------------
+; END UNInstaller Sections
+;--------------------------------    
