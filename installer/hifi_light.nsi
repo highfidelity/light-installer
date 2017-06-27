@@ -21,6 +21,8 @@
     !include "LogicLib.nsh"
     !include "nsDialogs.nsh"
     !include "WinMessages.nsh"
+    !include "TextFunc.nsh"
+    !include "WordFunc.nsh"
 ;--------------------------------
 ; END Includes
 ;--------------------------------
@@ -231,7 +233,7 @@
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
-    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6782.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6785.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
     ;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
@@ -243,7 +245,9 @@
     !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
     !define CONTENT_ID "jaws-1"
-    !define CONTENT_SET "https://hifi-content.s3.amazonaws.com/howard/zaru-content-custom-scripts.zip"
+    !define CONTENT_SET "http://cdn.highfidelity.com/content-sets/zaru-content-custom-scripts.zip"
+    !define MORPH_AVATAR_FILE "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
+
 
     ; Request Administrator privileges for Windows Vista and higher
     RequestExecutionLevel admin
@@ -303,10 +307,10 @@
     !define VERSIONMAJOR 1
     !define VERSIONMINOR 0
     !define VERSIONBUILD 0
-    !define HELPURL "http://highfidelity.io" ; "Support Information" link
-    !define UPDATEURL "http://highfidelity.io" ; "Product Updates" link
-    !define ABOUTURL "http://highfidelity.io" ; "Publisher" link
-    !define INSTALLSIZE 1024 ; In kB; just a guess
+    !define HELPURL "http://highfidelity.com" ; "Support Information" link
+    !define UPDATEURL "http://highfidelity.com" ; "Product Updates" link
+    !define ABOUTURL "http://highfidelity.com" ; "Publisher" link
+    !define INSTALLSIZE 160000 ; In kB; just a guess
     Function SetupUninstaller
         writeUninstaller "$AppData\High Fidelity\${EVENT_NAME}\Uninstall ${EXE_NAME}"
         
@@ -565,13 +569,29 @@
 ; START Step 4:
 ; Launch Interface with command-line arguments
 ;--------------------------------
+    Var InterfaceCommandArgs
+    
     Function LaunchInterface
         ;MessageBox MB_OK "$HiFiInstalled"
+        ${StrContains} $StrContainsResult "/forceNoLaunchClient" $CMDLINE
         ${If} $HiFiInstalled == "true"
+        ${AndIf} $StrContainsResult == ""
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            Exec '"$InterfacePath" --url "${EVENT_LOCATION}" --suppress-settings-reset --skipTutorial --cache "${ContentPath}\Interface" --scripts "${ContentPath}\Interface\scripts"'
+            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial --cache "${ContentPath}\Interface" --scripts "${ContentPath}\Interface\scripts"'
+
+            ; Demonstrate that we can pick up the beta RR avatar from file.
+            IfFileExists "${MORPH_AVATAR_FILE}" ParseRRScript NoRRScript
+            ParseRRScript:
+                ${LineRead} "${MORPH_AVATAR_FILE}" "4" $R0
+                ${WordFind2X} "$R0" 'var rrURL = "' '";' "+1" $R1
+                ${IfNot} $R1 == $R0
+                    StrCpy $InterfaceCommandArgs '$InterfaceCommandArgs --avatarURL "$R1"'
+                ${EndIf}
+            NoRRScript:
+            
+            Exec '"$InterfacePath"  $InterfaceCommandArgs'
         ${EndIf}
         ${nsProcess::Unload}
         SendMessage $HWNDPARENT ${WM_COMMAND} 2 0 ; Click the "Finish" button
