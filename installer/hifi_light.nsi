@@ -334,8 +334,6 @@
     Function .onInit
         InitPluginsDir
         File /oname=$PLUGINSDIR\hifi1.bmp "images\hifi1.bmp"
-        File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
-        File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
         Call SetupVars
         
         CreateDirectory "$AppData\High Fidelity\${EVENT_NAME}"
@@ -512,12 +510,12 @@
     Var NextImageFilename
     Var NextImageNumber
     Function ChangeImage
-        ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
-        StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
         IntOp $NextImageNumber $NextImageNumber + 1
-        ${If} $NextImageNumber == 4
+        ${If} $NextImageNumber == 2
             StrCpy $NextImageNumber 1
         ${EndIf}
+        StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
+        ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
     FunctionEnd
     Function MaybeInstallHiFi        
         ${If} $MustInstallHiFi == "true"
@@ -547,7 +545,6 @@
             ${NSD_CreateBitmap} 0 46 100% 100% ""
             Pop $Image
             ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
-            IntOp $NextImageNumber $NextImageNumber + 1
             
             ${NSD_CreateTimer} CheckInstallComplete 100
             ${NSD_CreateTimer} ChangeImage 2500
