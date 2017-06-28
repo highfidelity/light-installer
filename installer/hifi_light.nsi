@@ -229,7 +229,7 @@
     !define EXE_NAME "${INSTALLER_APPLICATION_NAME}.exe"
     OutFile "${EXE_NAME}"
 
-    !define MUI_ICON "icons\jaws.ico"
+    !define MUI_ICON "icons\jimjamz.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
