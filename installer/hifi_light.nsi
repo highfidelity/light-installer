@@ -219,7 +219,7 @@
 ; START General
 ;--------------------------------    
     ; Event Name
-    !define EVENT_NAME "Jaws"
+    !define EVENT_NAME "JimJamz"
     !define INSTALLER_APPLICATION_NAME "High Fidelity ${EVENT_NAME} Event"
     
     ; Installer application name
@@ -229,11 +229,11 @@
     !define EXE_NAME "${INSTALLER_APPLICATION_NAME}.exe"
     OutFile "${EXE_NAME}"
 
-    !define MUI_ICON "icons\jaws.ico"
+    !define MUI_ICON "icons\jimjamz.ico"
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
-    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6785.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6790.exe"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
     ;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
@@ -244,7 +244,7 @@
     ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
     !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
     !define EVENT_LOCATION "hifi://dev-playa/event"
-    !define CONTENT_ID "jaws-1"
+    !define CONTENT_ID "jimjamz-1"
     !define CONTENT_SET "http://cdn.highfidelity.com/content-sets/zaru-content-custom-scripts.zip"
     !define MORPH_AVATAR_FILE "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
 
@@ -259,7 +259,7 @@
 ; START Installer Pages
 ;--------------------------------
 !insertmacro MUI_PAGE_INSTFILES
-!define MUI_TEXT_INSTALLING_TITLE "High Fidelity - Event Installer"
+!define MUI_TEXT_INSTALLING_TITLE " "
 !define MUI_TEXT_INSTALLING_SUBTITLE " "
 !insertmacro MUI_LANGUAGE "English"
 ;--------------------------------
@@ -334,6 +334,8 @@
     Function .onInit
         InitPluginsDir
         File /oname=$PLUGINSDIR\hifi1.bmp "images\hifi1.bmp"
+        File /oname=$PLUGINSDIR\hifi2.bmp "images\hifi2.bmp"
+        File /oname=$PLUGINSDIR\hifi3.bmp "images\hifi3.bmp"
         Call SetupVars
         
         CreateDirectory "$AppData\High Fidelity\${EVENT_NAME}"
@@ -511,7 +513,7 @@
     Var NextImageNumber
     Function ChangeImage
         IntOp $NextImageNumber $NextImageNumber + 1
-        ${If} $NextImageNumber == 2
+        ${If} $NextImageNumber == 4
             StrCpy $NextImageNumber 1
         ${EndIf}
         StrCpy $NextImageFilename "hifi$NextImageNumber.bmp"
@@ -541,13 +543,13 @@
             ${NSD_AddStyle} $ProgressBar ${PBS_MARQUEE}
             SendMessage $ProgressBar ${PBM_SETMARQUEE} 1 50 ; start=1|stop=0 interval(ms)=+N	
             
-            ; Images should be 440*180px
+            ; Images should be 442*180px 72dpi 24bpp
             ${NSD_CreateBitmap} 0 46 100% 100% ""
             Pop $Image
             ${NSD_SetImage} $Image $PLUGINSDIR\$NextImageFilename $ImageHandle
             
             ${NSD_CreateTimer} CheckInstallComplete 100
-            ${NSD_CreateTimer} ChangeImage 2500
+            ${NSD_CreateTimer} ChangeImage 3000
             
             ; Enable "Close" button
             ;GetDlgItem $0 $HWNDPARENT 1
