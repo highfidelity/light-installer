@@ -233,7 +233,7 @@
     !define MUI_HEADERIMAGE
     !define MUI_HEADERIMAGE_BITMAP "icons\installer-header.bmp"
     !define HIFI_PROTOCOL_VERSION "vNTlzyZbPVfAprVzet07vA=="
-    !define HIFI_MAIN_INSTALLER_URL "http://builds.highfidelity.com/HighFidelity-Beta-6790.exe"
+    !define HIFI_MAIN_INSTALLER_URL "http://highfidelity.com/download/win/6810"
     ;;!define HIFI_MAIN_INSTALLER_URL "https://deployment.highfidelity.com/jobs/pr-build/label%3Dwindows/1042/HighFidelity-Beta-PR10794-e5666fbb2f9e0e7fa403cb3eafc74a386e253597.exe"
     ; Small test exe for testing/debugging.
     ;!define HIFI_MAIN_INSTALLER_URL "https://s3-us-west-1.amazonaws.com/hifi-content/zfox/Personal/test.exe"
@@ -243,7 +243,7 @@
     ;;  2. make sure that some older NON-PR build is already installed (such as an older release). This puts an entry in the registry so we don't fail when checking.
     ;;  3. If steam is the latest, or if the old installation has a non-default install pathname, you're screwed.
     !define PR_BUILD_DIRECTORY ""                                        ;; example: "High Fidelity - PR10794"
-    !define EVENT_LOCATION "hifi://dev-playa/event"
+    !define EVENT_LOCATION "hifi://JimJamz"
     !define CONTENT_ID "jimjamz-1"
     !define CONTENT_SET "http://cdn.highfidelity.com/content-sets/zaru-content-custom-scripts.zip"
     !define MORPH_AVATAR_FILE "$AppData\..\LocalLow\Morph3D\ReadyRoom\High_Fidelity_RR_Launch.js"
@@ -269,9 +269,12 @@
 ;--------------------------------
 ; START Installer Sections
 ;--------------------------------    
+    !define INCLUDE_DOWNLOAD_CONTENT_STEP "false"
     Section "LightInstaller" LightInstaller
         Call MaybeDownloadHiFi
-        Call MaybeDownloadContent
+        ${If} ${INCLUDE_DOWNLOAD_CONTENT_STEP} == "true"
+            Call MaybeDownloadContent
+        ${EndIf}
         Call MaybeInstallHiFi
         Call LaunchInterface
     SectionEnd
@@ -310,7 +313,7 @@
     !define HELPURL "http://highfidelity.com" ; "Support Information" link
     !define UPDATEURL "http://highfidelity.com" ; "Product Updates" link
     !define ABOUTURL "http://highfidelity.com" ; "Publisher" link
-    !define INSTALLSIZE 160000 ; In kB; just a guess
+    !define INSTALLSIZE 1024 ; In kB; just a guess
     Function SetupUninstaller
         writeUninstaller "$AppData\High Fidelity\${EVENT_NAME}\Uninstall ${EXE_NAME}"
         
@@ -578,7 +581,12 @@
             ; Make sure that no High Fidelity application is already running
             !insertmacro CheckForRunningApplications
             Call GetInterfacePath ;; In case it changed during installation of a new version
-            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial --cache "${ContentPath}\Interface" --scripts "${ContentPath}\Interface\scripts"'
+            ;StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial --cache "${ContentPath}\Interface" --scripts "${ContentPath}\Interface\scripts"'
+            
+            ; The released version of Interface crashes when you supply the "--cache" switch.
+            ; For JimJamz, we want to use the default set of scripts.
+            ; Because of the above, omit the "--cache" and "--scripts" switches.
+            StrCpy $InterfaceCommandArgs '--url "${EVENT_LOCATION}"  --suppress-settings-reset --skipTutorial'
 
             ; Demonstrate that we can pick up the beta RR avatar from file.
             IfFileExists "${MORPH_AVATAR_FILE}" ParseRRScript NoRRScript
